@@ -1,0 +1,14 @@
+torch
+timm
+git+https://github.com/albu/albumentations
+opencv-python-headless==4.2.0.32
+tqdm
+sklearn
+grad-cam
+pandas
+matplotlib
+seaborn
+wandb
+pydicom 
+python-gdcm 
+pylibjpeg
