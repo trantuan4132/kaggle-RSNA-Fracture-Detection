@@ -226,7 +226,7 @@ def run(fold, config):
 
         # Tensorboard logging
         if writer:
-            for k, v in log_dict:
+            for k, v in log_dict.items():
                 writer.add_scalar(k, v, global_step=epoch)
 
         # Save checkpoint
