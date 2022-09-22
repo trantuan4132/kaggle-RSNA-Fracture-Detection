@@ -7,7 +7,7 @@ import numpy as np
 from utils import load_dicom
 
 
-class RSNAVertebraeClassificationDataset(Dataset):
+class RSNAClassificationDataset(Dataset):
     def __init__(self, image_dir, df, img_cols, label_cols, img_format='jpg', transform=None):
         """
         Args:
@@ -25,7 +25,7 @@ class RSNAVertebraeClassificationDataset(Dataset):
         transform: albumentations transform, optional
             Albumentations transform to apply to the image
         """
-        super(RSNAVertebraeClassificationDataset, self).__init__()
+        super(RSNAClassificationDataset, self).__init__()
         self.image_dir = image_dir
         self.df = df
         self.img_cols = img_cols
@@ -114,9 +114,9 @@ if __name__ == "__main__":
     n_cols = 5
     transform = build_transform(image_size=512, is_train=True, include_top=False)
     n_samples = n_rows * n_cols
-    sample_dataset = RSNAVertebraeClassificationDataset(image_dir="train_images", df=df.sample(n_samples), 
-                                                        img_cols=img_cols, label_cols=label_cols, 
-                                                        img_format='png', transform=transform)
+    sample_dataset = RSNAClassificationDataset(image_dir="train_images", df=df.sample(n_samples), 
+                                               img_cols=img_cols, label_cols=label_cols, 
+                                               img_format='png', transform=transform)
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols*4, n_rows*4))
     for i in range(n_samples):
         img, label = sample_dataset[i]
