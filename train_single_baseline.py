@@ -24,6 +24,7 @@ class CFG_CSC:
     ## Dataset
     input_dir = '.'
     kfold = 5
+    fold = 0                            # 0 ⟶ (kfold-1): train 1 fold only, 'all': train all folds sequentially
     label_file = f'train_CSC_fold{kfold}.csv'
     img_cols = ['StudyInstanceUID', 'Slice']
     label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
@@ -272,8 +273,11 @@ def main():
         config.input_dir = '../input/rsna-2022-cervical-spine-fracture-detection'
 
     # Train model
-    for fold in range(config.kfold):
-        run(fold, config)
+    if config.fold == 'all':
+        for fold in range(config.kfold):
+            run(fold, config)
+    else:
+        run(config.fold, config)
 
 if __name__ == "__main__":
     main()

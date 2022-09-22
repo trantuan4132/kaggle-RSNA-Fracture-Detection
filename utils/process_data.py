@@ -122,7 +122,7 @@ def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations',
             seg_lst.append([uid, slice] + list(labels))
         return seg_lst
                 
-    seg_lst = Parallel(n_jobs=5)(
+    seg_lst = Parallel(n_jobs=-1)(
         delayed(extract)(path, image_dir, reverse_lst)
         for path in tqdm(glob.glob(f"{segmentation_dir}/*")) if path.endswith(".nii")
     )
