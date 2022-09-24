@@ -138,11 +138,10 @@ train.csv
 train_bounding_boxes.csv
 test.csv
 sample_submission.csv
-train_fold5.csv
+*_fold5.csv
 # reverse_list.txt
 # train_segmented.csv
 *.pth
 log
 utils/cam_vis.py
 utils/debug.py
-inference.py

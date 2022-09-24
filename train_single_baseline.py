@@ -36,7 +36,7 @@ class CFG_CSC:
 
     ## Model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_name = 'convnext_tiny'
+    model_name = 'gcvit_xtiny'
     in_chans = 3
     num_classes = len(label_cols)
     drop_path_rate = 0.1

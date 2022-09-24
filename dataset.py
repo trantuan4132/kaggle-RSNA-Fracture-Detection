@@ -3,6 +3,7 @@ import cv2
 from torch.utils.data import Dataset
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import pandas as pd
 import numpy as np
 from utils import load_dicom
 
@@ -33,6 +34,12 @@ class RSNAClassificationDataset(Dataset):
         self.img_format = img_format
         self.transform = transform
 
+        if self.df is not None and self.img_cols[1] not in self.df.columns:
+            slice_lst = [(uid, [int(f[:f.rfind('.')]) for f in os.listdir(f'{self.image_dir}/{uid}')]) 
+                          for uid in self.df[self.img_cols[0]]]
+            slice_df = pd.DataFrame(slice_lst, columns=self.img_cols).explode(self.img_cols[1])
+            self.df = slice_df.merge(self.df, on=self.img_cols[0])
+
     def __len__(self):
         return len(self.df)
 
@@ -40,9 +47,11 @@ class RSNAClassificationDataset(Dataset):
         if self.df is not None:
             row = self.df.iloc[index]
             image_file = f'{self.image_dir}/{row[self.img_cols[0]]}/{row[self.img_cols[1]]}.{self.img_format}'
-            label = row[self.label_cols].values.astype('float')
+            label = row[self.label_cols].values.astype('float') \
+                    if set(self.label_cols).issubset(self.df.columns) \
+                    else np.zeros(len(self.label_cols))
         else:
-            image_file = glob.glob(f'{self.image_dir}/**/*.{self.img_format}')[index]
+            image_file = glob.glob(f'{self.image_dir}/*/*.{self.img_format}')[index]
             label = np.zeros(len(self.label_cols))
 
         # Load and convert image to RGB
@@ -104,12 +113,11 @@ def build_transform(image_size=None, is_train=True, include_top=True, additional
 
 
 if __name__ == "__main__":
-    import pandas as pd
     import matplotlib.pyplot as plt
 
     img_cols = ['StudyInstanceUID', 'Slice']
     label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
-    df = pd.read_csv('train_segmented.csv')#.iloc[[1994, 2601, 8783]]
+    df = pd.read_csv('train_CSC.csv')#.iloc[[1994, 2601, 8783]]
     n_rows = 2
     n_cols = 5
     transform = build_transform(image_size=512, is_train=True, include_top=False)
