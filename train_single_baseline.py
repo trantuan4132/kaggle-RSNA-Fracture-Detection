@@ -36,7 +36,7 @@ class CFG_CSC:
 
     ## Model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_name = 'gcvit_xtiny'
+    model_name = 'convnext_tiny'
     in_chans = 3
     num_classes = len(label_cols)
     drop_path_rate = 0.1
@@ -206,7 +206,7 @@ def run(fold, config):
 
     # Initialize wandb logging if set to True
     if config._use_wandb:
-        wandb.init(project=config._wandb_project, name=f'{config.model_name}-fold{fold}', entity=config._wandb_entity,
+        wandb.init(project=config._wandb_project, name=f'{config.model_name}-{config.image_size}-fold{fold}', entity=config._wandb_entity,
                    config={k: v for k, v in vars(config).items() if not k.startswith('_')})
         wandb.define_metric("val/loss", summary="min")
         wandb.define_metric("val/acc", summary="max")

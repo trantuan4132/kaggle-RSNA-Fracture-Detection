@@ -76,7 +76,7 @@ def main():
     test_trainsform = build_transform(config.image_size, is_train=False, include_top=True)
     test_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/{config.image_folder}", df=test_df,
                                              img_cols=config.img_cols, label_cols=config.label_cols,
-                                             img_format='dcm', transform=test_trainsform)
+                                             img_format='png', transform=test_trainsform)
     test_loader = DataLoader(test_dataset, batch_size=config.batch_size,
                              num_workers=config.num_workers, pin_memory=config.pin_memory,
                              shuffle=False)
@@ -105,8 +105,9 @@ def main():
         preds.append(predict(model, test_loader, config))
     preds = np.mean(preds, axis=0)
     # preds = (preds > 0.5).astype('int')
-    test_df = test_dataset.df.sort_values(config.img_cols)
+    test_df = test_dataset.df
     test_df[config.label_cols] = preds
+    test_df.sort_values(config.img_cols, inplace=True)
     test_df.to_csv(config.out_file, index=False, mode=config.mode, 
                    header=True if config.mode=='w' else not os.path.exists(config.out_file))
     print(test_df)

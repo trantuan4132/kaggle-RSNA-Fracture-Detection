@@ -1,5 +1,5 @@
 torch
-timm
+git+https://github.com/rwightman/pytorch-image-models
 git+https://github.com/albu/albumentations
 opencv-python-headless==4.2.0.32
 tqdm
