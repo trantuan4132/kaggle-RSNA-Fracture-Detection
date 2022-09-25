@@ -35,7 +35,7 @@ class RSNAClassificationDataset(Dataset):
         self.transform = transform
 
         if self.df is not None and self.img_cols[1] not in self.df.columns:
-            slice_lst = [(uid, [int(f[:f.rfind('.')]) for f in os.listdir(f'{self.image_dir}/{uid}')]) 
+            slice_lst = [(uid, sorted([int(f[:f.rfind('.')]) for f in os.listdir(f'{self.image_dir}/{uid}')])) 
                           for uid in self.df[self.img_cols[0]]]
             slice_df = pd.DataFrame(slice_lst, columns=self.img_cols).explode(self.img_cols[1])
             self.df = slice_df.merge(self.df, on=self.img_cols[0])

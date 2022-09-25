@@ -107,7 +107,7 @@ def main():
     # preds = (preds > 0.5).astype('int')
     test_df = test_dataset.df
     test_df[config.label_cols] = preds
-    test_df.sort_values(config.img_cols, inplace=True)
+    # test_df.sort_values(config.img_cols, inplace=True)
     test_df.to_csv(config.out_file, index=False, mode=config.mode, 
                    header=True if config.mode=='w' else not os.path.exists(config.out_file))
     print(test_df)
