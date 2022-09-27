@@ -32,11 +32,12 @@ class CFG_CSC:
     drop_path_rate = 0.1
     pretrained = False                       # True: load pretrained model, False: train from scratch
     checkpoint_path = ''                    # Path to model's pretrained weights
-    CSC_checkpoint_dirs = {'convnext_tiny': ['CSC_checkpoint/convnext_tiny/fold=0-best.pth',
-                                             'CSC_checkpoint/convnext_tiny/fold=1-best.pth',
-                                             'CSC_checkpoint/convnext_tiny/fold=2-best.pth',
-                                             'CSC_checkpoint/convnext_tiny/fold=3-best.pth',
-                                             'CSC_checkpoint/convnext_tiny/fold=4-best.pth']}
+    # CSC_checkpoint_dirs = {'convnext_tiny': ['CSC_checkpoint/convnext_tiny-512/fold=0-best.pth',
+    #                                          'CSC_checkpoint/convnext_tiny-512/fold=1-best.pth',
+    #                                          'CSC_checkpoint/convnext_tiny-512/fold=2-best.pth',
+    #                                          'CSC_checkpoint/convnext_tiny-512/fold=3-best.pth',
+    #                                          'CSC_checkpoint/convnext_tiny-512/fold=4-best.pth']}
+    CSC_checkpoint_dirs = {'convnext_tiny': [f'CSC_checkpoint/convnext_tiny-512/fold={i}-best.pth' for i in range(5)]}
     debug = False
 
 
@@ -44,11 +45,12 @@ class CFG_CSC_FD:
     label_file = 'sample_submission.csv'
     image_folder = 'test_images'
     out_file = 'submission.csv'
-    FD_checkpoint_dirs = {'convnext_tiny': ['FD_checkpoint/convnext_tiny/fold=0-best.pth',
-                                            'FD_checkpoint/convnext_tiny/fold=1-best.pth',
-                                            'FD_checkpoint/convnext_tiny/fold=2-best.pth',
-                                            'FD_checkpoint/convnext_tiny/fold=3-best.pth',
-                                            'FD_checkpoint/convnext_tiny/fold=4-best.pth']}
+    # FD_checkpoint_dirs = {'convnext_tiny': ['FD_checkpoint/convnext_tiny-512/fold=0-best.pth',
+    #                                         'FD_checkpoint/convnext_tiny-512/fold=1-best.pth',
+    #                                         'FD_checkpoint/convnext_tiny-512/fold=2-best.pth',
+    #                                         'FD_checkpoint/convnext_tiny-512/fold=3-best.pth',
+    #                                         'FD_checkpoint/convnext_tiny-512/fold=4-best.pth']}
+    FD_checkpoint_dirs = {'convnext_tiny': [f'FD_checkpoint/convnext_tiny-512/fold={i}-best.pth' for i in range(5)]}
 
 
 def predict(model, loader, config):

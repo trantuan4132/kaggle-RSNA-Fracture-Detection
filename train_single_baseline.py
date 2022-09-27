@@ -271,6 +271,9 @@ def main():
     set_seed(config.seed)
     if os.path.exists('/kaggle/input'):
         config.input_dir = '../input/rsna-2022-cervical-spine-fracture-detection'
+    if os.path.exists('/content/drive/MyDrive'):
+        config.checkpoint_dir = os.path.join('/content/drive/MyDrive/rsna-checkpoint', config.checkpoint_dir, 
+                                            f'{config.model_name}-{config.image_size}')
 
     # Train model
     if config.fold == 'all':

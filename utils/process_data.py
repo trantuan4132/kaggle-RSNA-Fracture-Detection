@@ -16,7 +16,7 @@ def parse_args():
                         help='Path to the label file')
     parser.add_argument('--relabel_path', type=str, default='relabel.csv',
                         help='Path to the relabel file')
-    parser.add_argument('--vert_label_path', type=str, default='train_CSC.csv',
+    parser.add_argument('--vert_label_path', type=str, default='train_CSC_full.csv',
                         help='Path to the vertebrae label file')
     parser.add_argument('--seg_dir', type=str, default='segmentations',
                         help='Path to the segmentation directory')
