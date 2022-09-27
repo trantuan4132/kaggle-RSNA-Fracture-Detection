@@ -45,6 +45,7 @@ class CFG_CSC:
 
     ## Training
     n_epochs = 15
+    loss_fn = 'bce'
     optimizer = 'AdamW'
     learning_rate = 1e-4
     weight_decay = 1e-5
@@ -58,36 +59,61 @@ class CFG_CSC:
     checkpoint_dir = 'CSC_checkpoint'   # Directory to save new checkpoints
     save_freq = 2                       # Number of checkpoints to save after each epoch
     debug = False                       # Get a few samples for debugging
+    _metric_to_use = ['acc', 'auc']     # Metric to be used
+    _metric_to_opt = 'auc'              # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
     _use_tensorboard = False            # Whether to use tensorboard for logging
     _use_wandb = True                   # Whether to use wandb for logging
     _wandb_project = 'RSNA-CSC-2022'    # Wandb's project name
     _wandb_entity = 'aip490'            # Wandb's account to save experiment result
+    _wandb_resume_id = None             # Resume wandb logging if specify run id (e.g. '33fp7u8d')
 
 
 class CFG_FD(CFG_CSC):
     kfold = 5
     label_file = f'train_FD_fold{kfold}.csv'
+    loss = 'weighted_bce'
     checkpoint_dir = 'FD_checkpoint'    # Directory to save new checkpoints
+    _metric_to_use = []                 # Metric to be used
+    _metric_to_opt = 'loss'             # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
     _wandb_project = 'RSNA-FD-2022'     # Wandb's project name
 
 
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2, reduction='mean'):
+# class FocalLoss(nn.Module):
+#     def __init__(self, alpha=1, gamma=2, reduction='mean'):
+#         super().__init__()
+#         self.alpha = alpha
+#         self.gamma = gamma
+#         self.reduction = reduction
+
+#     def forward(self, inputs, targets):
+#         bce_loss = F.binary_cross_entropy_with_logits(
+#             inputs, targets, reduction='none')
+#         pt = torch.exp(-bce_loss)
+#         focal_loss = self.alpha * (1. - pt)**self.gamma * bce_loss
+#         if self.reduction == 'mean':
+#             return focal_loss.mean()
+#         elif self.reduction == 'sum':
+#             return focal_loss.sum()
+#         return focal_loss
+
+
+class WeightedBCELoss(nn.Module):
+    def __init__(self, weights=[2, 1], reduction='mean'):
         super().__init__()
-        self.alpha = alpha
-        self.gamma = gamma
+        self.weights = weights
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        bce_loss = F.binary_cross_entropy_with_logits(
-            inputs, targets, reduction='none')
-        pt = torch.exp(-bce_loss)
-        focal_loss = self.alpha * (1. - pt)**self.gamma * bce_loss
+        loss = F.binary_cross_entropy_with_logits(
+            inputs, targets, reduction='none'
+        )
+        weights = targets * self.weights[0] + (1-targets) * self.weights[1]
+        loss = (loss * weights).sum(axis=1) / weights.sum(axis=1)
         if self.reduction == 'mean':
-            return focal_loss.mean()
+            return loss.mean()
         elif self.reduction == 'sum':
-            return focal_loss.sum()
-        return focal_loss
+            return loss.sum()
+        return loss
 
 
 def train_one_epoch(model, loader, criterion, optimizer, scaler, config):
@@ -140,15 +166,18 @@ def valid_one_epoch(model, loader, criterion, config):
             # tepoch.set_postfix(loss=running_loss.avg)
             tepoch.set_description_str(f'Loss: {running_loss.avg:.4f}')
 
-    # Calculate accuracy and AUC score         
-    auc_scores = {}
+    # Calculate accuracy and AUC score
+    metrics = {}
     preds = torch.cat(preds).sigmoid().cpu().detach().numpy()
     gts = torch.cat(gts).cpu().detach().numpy()
-    acc = np.mean(np.mean((preds > 0.5) == gts, axis=0))
-    for i, col in enumerate(config.label_cols):
-        auc_scores[col] = roc_auc_score(gts[:, i], preds[:, i])
-    auc = np.mean(list(auc_scores.values()))
-    return running_loss.avg, acc, auc
+    if 'acc' in config._metric_to_use:
+        metrics['acc'] = np.mean(np.mean((preds > 0.5) == gts, axis=0))
+    if 'auc' in config._metric_to_use:
+        auc_scores = {}
+        for i, col in enumerate(config.label_cols):
+            auc_scores[col] = roc_auc_score(gts[:, i], preds[:, i])
+        metrics['auc'] = np.mean(list(auc_scores.values()))
+    return running_loss.avg, metrics
 
 
 def run(fold, config):
@@ -187,7 +216,7 @@ def run(fold, config):
 
     # Set up training
     start_epoch = 0
-    criterion = nn.BCEWithLogitsLoss() # FocalLoss()
+    criterion = WeightedBCELoss() if config.loss_fn == 'weighted_bce' else nn.BCEWithLogitsLoss()
     optimizer = eval(f"optim.{config.optimizer}(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)")
     scheduler = eval(f"optim.lr_scheduler.{config.lr_scheduler}(optimizer, **config.lr_scheduler_params)")
     scaler = torch.cuda.amp.GradScaler()
@@ -206,32 +235,35 @@ def run(fold, config):
 
     # Initialize wandb logging if set to True
     if config._use_wandb:
-        wandb.init(project=config._wandb_project, name=f'{config.model_name}-{config.image_size}-fold{fold}', entity=config._wandb_entity,
-                   config={k: v for k, v in vars(config).items() if not k.startswith('_')})
+        wandb.init(project=config._wandb_project, name=f'{config.model_name}-{config.image_size}-fold{fold}',
+                   entity=config._wandb_entity, config={k: v for k, v in vars(config).items() if not k.startswith('_')},
+                   id=config._wandb_resume_id, resume='must' if config._wandb_resume_id else None)
         wandb.define_metric("val/loss", summary="min")
-        wandb.define_metric("val/acc", summary="max")
-        wandb.define_metric("val/auc", summary="max")
+        for metric in config._metric_to_use:
+            wandb.define_metric(f"val/{metric}", summary="max")
 
-    best_auc = 0
+    best_score = np.inf if config._metric_to_opt == 'loss' else 0
     for epoch in range(start_epoch, config.n_epochs):
         print(f'Fold: {fold}  Epoch: {epoch}')
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, scaler, config)
-        val_loss, acc, auc = valid_one_epoch(model, val_loader, criterion, config)
+        val_loss, metrics = valid_one_epoch(model, val_loader, criterion, config)
         scheduler.step()
-        print(f'Acc: {acc:.4f}, AUC: {auc:.4f}')
+        print(', '.join([f"{metric.upper()}: {metrics[metric]:.4f}" for metric in config._metric_to_use]))
         print(f'New LR: {scheduler.get_last_lr()[0]}')
 
         # Log to file
         log_stats = {
             'fold': fold, 'epoch': epoch, 'n_parameters': n_parameters,
-            'train_loss': train_loss, 'val_loss': val_loss, 'val_acc': acc, 'val_auc': auc,
+            'train_loss': train_loss, 'val_loss': val_loss,
         }
+        for metric in config._metric_to_use:
+            log_stats['val_' + metric] = metrics[metric]
         log_to_file(log_stats, "log.txt", config.checkpoint_dir)
 
         # Wandb logging
-        log_dict = {
-            'train/loss': train_loss, 'val/loss': val_loss, 'val/acc': acc, 'val/auc': auc,
-        }
+        log_dict = {'train/loss': train_loss, 'val/loss': val_loss}
+        for metric in config._metric_to_use:
+            log_dict['val/' + metric] = metrics[metric]
         if config._use_wandb:
             wandb.log(log_dict)
 
@@ -247,12 +279,14 @@ def run(fold, config):
             'scheduler': scheduler.state_dict(),
             'scaler': scaler.state_dict(),
             'epoch': epoch,
-        }            
-        save_path = f"{config.checkpoint_dir}/fold={fold}-epoch={epoch}-auc={auc:.4f}.pth"
+        }
+        score = log_stats['val_' + config._metric_to_opt]
+        save_path = f"{config.checkpoint_dir}/fold={fold}-epoch={epoch}-{config._metric_to_opt}={score:.4f}.pth"
         save_checkpoint(checkpoint, save_path)
-        if auc > best_auc:
-            best_auc = auc
-            checkpoint['auc'] = auc
+        if (score > best_score and config._metric_to_opt != 'loss') or \
+           (score < best_score and config._metric_to_opt == 'loss'):
+            best_score = score
+            checkpoint[config._metric_to_opt] = score
             save_path = f"{config.checkpoint_dir}/fold={fold}-best.pth"
             print('--> Saving checkpoint')
             save_checkpoint(checkpoint, save_path)
