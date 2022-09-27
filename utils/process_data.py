@@ -137,8 +137,9 @@ def create_fracture_labels(df, df_vert, img_col, label_cols):
     """Create fracture labels from train labels and vertebrae labels"""
     vert_label_cols = [col + '_vert' for col in label_cols]
     df_frac = df_vert.set_index(img_col).join(df.set_index(img_col), lsuffix='_vert').reset_index()
-    df_frac.loc[:, label_cols] = df_frac.loc[:, label_cols] * df_frac.loc[:, vert_label_cols]
-    return df_frac.drop(columns=vert_label_cols)
+    df_frac[vert_label_cols] = (df_frac[vert_label_cols] > 0.5).astype('int')
+    df_frac[label_cols] = df_frac[label_cols].values * df_frac[vert_label_cols].values
+    return df_frac.loc[:, ~df_frac.columns.str.endswith('_vert')]
 
 
 if __name__ == "__main__":
