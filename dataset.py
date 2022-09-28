@@ -1,4 +1,4 @@
-import os, glob
+import os, glob, zipfile
 import cv2
 from torch.utils.data import Dataset
 import albumentations as A
@@ -55,10 +55,18 @@ class RSNAClassificationDataset(Dataset):
             label = np.zeros(len(self.label_cols))
 
         # Load and convert image to RGB
-        if self.img_format == 'dcm':
-            image = load_dicom(image_file)
+        if os.path.exists(os.path.dirname(image_file)):
+            if self.img_format == 'dcm':
+                image = load_dicom(image_file)
+            else:
+                image = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE).astype(np.uint8)
+        elif os.path.exists(f'{os.path.dirname(image_file)}.zip'):
+            with zipfile.ZipFile(f'{os.path.dirname(image_file)}.zip', "r") as z:
+                buf = z.read(f"{row[self.img_cols[0]]}/{os.path.basename(image_file)}")
+                np_buf = np.frombuffer(buf, np.uint8)
+                image = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
         else:
-            image = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE).astype(np.uint8)
+            raise Exception('No images found')
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
 
         # Apply augmentation
