@@ -19,6 +19,8 @@ def parse_args():
                         help='Path to the bounding boxes infomation file')
     parser.add_argument('--yolo_dir', type=str, default='yolov5',
                         help='Path to the yolo directory')
+    parser.add_argument('--detect', type=str, default=True,
+                        help='Detect or classify')
 
     return parser.parse_args()
 
@@ -93,6 +95,31 @@ def split_fold(num_fold, df):
     df_val = df[df['fold'] == 0]
 
     return df_train, df_val
+
+def process_data_for_yolo_cls(df, images_dir, data_type='train'):
+
+    for _, row in tq.tqdm(df.iterrows(), total=len(df)):
+
+        # Get the target
+        target = row['target']
+
+        # Create the image file name
+        study_slice = row['study_slice']
+        fname = study_slice + '.png'
+
+        # Only create txt files for class 1 images
+        if target == 1:
+            # Copy the image to images
+            # Set the path to the images here.
+            shutil.copyfile(
+                f"{images_dir}/{fname}",
+                os.path.join('yolov5/base_dir', f"images/{data_type}/fracture/{fname}")
+            )
+        else:
+            shutil.copyfile(
+                f"{images_dir}/{fname}",
+                os.path.join('yolov5/base_dir', f"images/{data_type}/no_fracture/{fname}")
+            )
     
 
 def process_data_for_yolo(df, images_dir, data_type='train'):
@@ -223,7 +250,11 @@ if __name__ == "__main__":
     metadata, bounding_boxes = process_metadata(metadata, bounding_boxes)
     df_train, df_val = split_fold(5, metadata)
 
-   # Preprocess data
-    process_data_for_yolo(df_train, args.train_image_dir)
-    process_data_for_yolo(df_val, args.train_image_dir, data_type='validation')
+    # Preprocess data
+    if args.detect:
+        process_data_for_yolo(df_train, args.train_image_dir)
+        process_data_for_yolo(df_val, args.train_image_dir, data_type='validation')
+    else:
+        process_data_for_yolo_cls(df_train, args.train_image_dir)
+        process_data_for_yolo_cls(df_val, args.train_image_dir, data_type='validation')
     

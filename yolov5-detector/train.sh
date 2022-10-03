@@ -10,4 +10,4 @@ python data_preprocessing.py \
     --yolo_dir "/content/kaggle-RSNA-Fracture-Detection/yolov5-detector/yolov5" 
 python train_hyperparams.py
 cd ./yolov5
-python train.py --img 1024 --batch 8 --epochs 2 --data my_data.yaml --cfg './models/yolov5l.yaml' --weights "/content/drive/MyDrive/AIP490_Capstone Project/Dataset/PNG data/yolov5l.pt"
+python classify/train.py --img 1024 --batch 8 --epochs 2 --data my_data.yaml --cfg './models/yolov5l.yaml' --weights "/content/drive/MyDrive/AIP490_Capstone Project/Dataset/PNG data/yolov5l-cls.pt"
