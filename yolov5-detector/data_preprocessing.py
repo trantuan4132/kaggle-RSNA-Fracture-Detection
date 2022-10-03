@@ -57,6 +57,7 @@ def yolo_setup(yolo_dir):
                 # validation (contains .txt files)
     '''
     base_dir = os.path.join(yolo_dir, 'base_dir')
+    shutil.rmtree(base_dir)
     os.mkdir(base_dir)
 
     # images
@@ -162,6 +163,7 @@ def process_data_for_yolo(df, images_dir, data_type='train'):
 
 def process_metadata(metadata, bounding_boxes):
     metadata = metadata.copy(deep=True)
+    metadata['target'] = metadata(df_data['label'])
     bounding_boxes = bounding_boxes.copy(deep=True)
     bounding_boxes['study_slice'] = bounding_boxes.apply(create_study_slice, axis=1)
     bounding_boxes = bounding_boxes.set_index('study_slice')
