@@ -5,7 +5,7 @@ import argparse
 import shutil
 import yaml
 import tqdm.notebook as tq
-
+from sklearn.model_selection import KFold, StratifiedKFold
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -19,8 +19,7 @@ def parse_args():
                         help='Path to the bounding boxes infomation file')
     parser.add_argument('--yolo_dir', type=str, default='yolov5',
                         help='Path to the yolo directory')
-    parser.add_argument('--train', type=str, default=True,
-                        help='Train or test')
+
     return parser.parse_args()
 
 
@@ -57,8 +56,11 @@ def yolo_setup(yolo_dir):
                 # validation (contains .txt files)
     '''
     base_dir = os.path.join(yolo_dir, 'base_dir')
-    shutil.rmtree(base_dir)
-    os.mkdir(base_dir)
+    if os.path.isdir(base_dir):
+      shutil.rmtree(base_dir)
+      os.mkdir(base_dir)
+    else:
+      os.mkdir(base_dir)
 
     # images
     images = os.path.join(base_dir, 'images')
@@ -81,6 +83,17 @@ def yolo_setup(yolo_dir):
     os.mkdir(validation)
     create_yaml_yolo()
 
+def split_fold(num_fold, df):
+    skf = StratifiedKFold(n_splits=num_fold, shuffle=True, random_state=101)
+
+    for fold, ( _, val_) in enumerate(skf.split(X=df, y=df.target)):
+        df.loc[val_ , "fold"] = fold
+    
+    df_train = df[df['fold'] != 0]
+    df_val = df[df['fold'] == 0]
+
+    return df_train, df_val
+    
 
 def process_data_for_yolo(df, images_dir, data_type='train'):
 
@@ -161,9 +174,10 @@ def process_data_for_yolo(df, images_dir, data_type='train'):
             os.path.join('yolov5/base_dir', f"images/{data_type}/{fname}")
         )
 
+
 def process_metadata(metadata, bounding_boxes):
     metadata = metadata.copy(deep=True)
-    metadata['target'] = metadata(df_data['label'])
+    metadata['target'] = metadata(metadata['label'])
     bounding_boxes = bounding_boxes.copy(deep=True)
     bounding_boxes['study_slice'] = bounding_boxes.apply(create_study_slice, axis=1)
     bounding_boxes = bounding_boxes.set_index('study_slice')
@@ -176,10 +190,10 @@ def process_metadata(metadata, bounding_boxes):
 
         if target == 1:
 
-            x = metadata.loc[study_slice, 'x']
-            y = metadata.loc[study_slice, 'y']
-            width = metadata.loc[study_slice, 'width']
-            height = metadata.loc[study_slice, 'height']
+            x = bounding_boxes.loc[study_slice, 'x']
+            y = bounding_boxes.loc[study_slice, 'y']
+            width = bounding_boxes.loc[study_slice, 'width']
+            height = bounding_boxes.loc[study_slice, 'height']
 
             bbox_dict = {
                 'x': x,
@@ -207,9 +221,11 @@ if __name__ == "__main__":
     metadata = pd.read_csv(args.metadata)
     bounding_boxes = pd.read_csv(args.bounding_boxes)
     metadata, bounding_boxes = process_metadata(metadata, bounding_boxes)
+    df_train, df_val = split_fold(5, metadata)
 
    # Preprocess data
     if args.train:
-        process_data_for_yolo(metadata, args.train_image_dir)
+        process_data_for_yolo(df_train, args.train_image_dir)
+        process_data_for_yolo(df_val, args.train_image_dir, data_type='validation')
     else:
         process_data_for_yolo(metadata, args.train_image_dir, False)
