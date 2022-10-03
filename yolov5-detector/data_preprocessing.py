@@ -19,7 +19,7 @@ def parse_args():
                         help='Path to the bounding boxes infomation file')
     parser.add_argument('--yolo_dir', type=str, default='yolov5',
                         help='Path to the yolo directory')
-    parser.add_argument('--detect', type=str, default=True,
+    parser.add_argument('--detect', action='store_true',
                         help='Detect or classify')
 
     return parser.parse_args()
@@ -38,7 +38,7 @@ def create_study_slice(row):
 def create_yaml_yolo():
     yaml_dict = {
         'train': 'base_dir/images/train',       # path to the train folder
-        'val': 'base_dir/images/validation',    # path to the val folder
+        'val': 'base_dir/images/val',    # path to the val folder
         'nc': 2,                                # number of classes
         'names': ['0', '1']                     # list of label names
     }
@@ -75,23 +75,23 @@ def yolo_setup(yolo_dir, detect=True):
     # create new folders inside images
     train = os.path.join(images, 'train')
     os.mkdir(train)
-    validation = os.path.join(images, 'validation')
-    os.mkdir(validation)
-
-    # create new folders inside labels
-    train = os.path.join(labels, 'train')
-    os.mkdir(train)
-    validation = os.path.join(labels, 'validation')
+    validation = os.path.join(images, 'val')
     os.mkdir(validation)
     if not detect:
-        fracture = os.path.join(train, 'fracture')
-        os.mkdir(fracture)
-        non_fracture = os.path.join(train, 'non_fracture')
-        os.mkdir(non_fracture)
-        fracture = os.path.join(validation, 'fracture')
-        os.mkdir(fracture)
-        non_fracture = os.path.join(validation, 'non_fracture')
-        os.mkdir(non_fracture)
+      fracture = os.path.join(train, 'fracture')
+      os.mkdir(fracture)
+      non_fracture = os.path.join(train, 'non_fracture')
+      os.mkdir(non_fracture)
+      fracture = os.path.join(validation, 'fracture')
+      os.mkdir(fracture)
+      non_fracture = os.path.join(validation, 'non_fracture')
+      os.mkdir(non_fracture)
+    else:
+      # create new folders inside labels
+      train = os.path.join(labels, 'train')
+      os.mkdir(train)
+      validation = os.path.join(labels, 'val')
+      os.mkdir(validation)
     create_yaml_yolo()
 
 def split_fold(num_fold, df):
@@ -127,7 +127,7 @@ def process_data_for_yolo_cls(df, images_dir, data_type='train'):
         else:
             shutil.copyfile(
                 f"{images_dir}/{fname}",
-                os.path.join('yolov5/base_dir', f"images/{data_type}/no_fracture/{fname}")
+                os.path.join('yolov5/base_dir', f"images/{data_type}/non_fracture/{fname}")
             )
     
 
@@ -249,7 +249,6 @@ def process_metadata(metadata, bounding_boxes):
 
 if __name__ == "__main__":
     args = parse_args()
-
     # Create a directory structure inside the yolov5 folder
     yolo_setup(args.yolo_dir, detect=args.detect)
 
@@ -262,8 +261,8 @@ if __name__ == "__main__":
     # Preprocess data
     if args.detect:
         process_data_for_yolo(df_train, args.train_image_dir)
-        process_data_for_yolo(df_val, args.train_image_dir, data_type='validation')
+        process_data_for_yolo(df_val, args.train_image_dir, data_type='val')
     else:
         process_data_for_yolo_cls(df_train, args.train_image_dir)
-        process_data_for_yolo_cls(df_val, args.train_image_dir, data_type='validation')
+        process_data_for_yolo_cls(df_val, args.train_image_dir, data_type='val')
     
