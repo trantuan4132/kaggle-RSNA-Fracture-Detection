@@ -11,4 +11,4 @@ python data_preprocessing.py \
     --detect False
 python train_hyperparams.py
 cd ./yolov5
-python classify/train.py --img 1024 --batch 8 --epochs 2 --data my_data.yaml --cfg './models/yolov5l.yaml' --weights "/content/drive/MyDrive/AIP490_Capstone Project/Dataset/PNG data/yolov5l-cls.pt"
+python classify/train.py --img 1024 --batch 8 --epochs 2 --model "yolov5l-cls.pt"
