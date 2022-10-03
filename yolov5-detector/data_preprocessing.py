@@ -46,7 +46,7 @@ def create_yaml_yolo():
         documents = yaml.dump(yaml_dict, file)
 
 
-def yolo_setup(yolo_dir):
+def yolo_setup(yolo_dir, detect=True):
     '''
         Create a new directory (this is happening inside the yolov5 directory)
         # base_dir
@@ -83,6 +83,15 @@ def yolo_setup(yolo_dir):
     os.mkdir(train)
     validation = os.path.join(labels, 'validation')
     os.mkdir(validation)
+    if not detect:
+        fracture = os.path.join(train, 'fracture')
+        os.mkdir(fracture)
+        non_fracture = os.path.join(train, 'non_fracture')
+        os.mkdir(non_fracture)
+        fracture = os.path.join(validation, 'fracture')
+        os.mkdir(fracture)
+        non_fracture = os.path.join(validation, 'non_fracture')
+        os.mkdir(non_fracture)
     create_yaml_yolo()
 
 def split_fold(num_fold, df):
@@ -242,7 +251,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     # Create a directory structure inside the yolov5 folder
-    yolo_setup(args.yolo_dir)
+    yolo_setup(args.yolo_dir, detect=args.detect)
 
     # Load meta data
     metadata = pd.read_csv(args.metadata)
