@@ -1,3 +1,8 @@
+pip install wandb
+WANDB_API_KEY=$250c23fe6f3b5730d50ba78a9c8ed669ed732f0e
+WANDB_ENTITY=$aip490
+WANDB_PROJECT="RSNA-YOLO-DETECT"
+wandb login
 python data_preprocessing.py \
     --train_image_dir "/content/images_dir" \
     --metadata "/content/df_data.csv" \
