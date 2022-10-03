@@ -177,7 +177,7 @@ def process_data_for_yolo(df, images_dir, data_type='train'):
 
 def process_metadata(metadata, bounding_boxes):
     metadata = metadata.copy(deep=True)
-    metadata['target'] = metadata(metadata['label'])
+    metadata['target'] = list(metadata['label'])
     bounding_boxes = bounding_boxes.copy(deep=True)
     bounding_boxes['study_slice'] = bounding_boxes.apply(create_study_slice, axis=1)
     bounding_boxes = bounding_boxes.set_index('study_slice')
@@ -224,8 +224,6 @@ if __name__ == "__main__":
     df_train, df_val = split_fold(5, metadata)
 
    # Preprocess data
-    if args.train:
-        process_data_for_yolo(df_train, args.train_image_dir)
-        process_data_for_yolo(df_val, args.train_image_dir, data_type='validation')
-    else:
-        process_data_for_yolo(metadata, args.train_image_dir, False)
+    process_data_for_yolo(df_train, args.train_image_dir)
+    process_data_for_yolo(df_val, args.train_image_dir, data_type='validation')
+    
