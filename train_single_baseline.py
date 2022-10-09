@@ -73,7 +73,6 @@ class CFG_FD(CFG_CSC):
     label_file = f'train_FD_fold{kfold}.csv'
     loss = 'weighted_bce'
     checkpoint_dir = 'FD_checkpoint'    # Directory to save new checkpoints
-    _metric_to_use = []                 # Metric to be used
     _metric_to_opt = 'loss'             # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
     _wandb_project = 'RSNA-FD-2022'     # Wandb's project name
 
