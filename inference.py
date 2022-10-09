@@ -23,7 +23,6 @@ class CFG_CSC:
     pin_memory = True
     seed = 42
     out_file = 'train_CSC_full.csv'
-    mode = 'a'                              # 'w': write to file, 'a': append to file
 
     # Model
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -37,12 +36,12 @@ class CFG_CSC:
     #                                          'CSC_checkpoint/convnext_tiny-512/fold=2-best.pth',
     #                                          'CSC_checkpoint/convnext_tiny-512/fold=3-best.pth',
     #                                          'CSC_checkpoint/convnext_tiny-512/fold=4-best.pth']}
-    CSC_checkpoint_dirs = {'convnext_tiny': [f'CSC_checkpoint/convnext_tiny-512/fold={i}-best.pth' for i in range(5)]}
+    checkpoint_dirs = {'convnext_tiny': [f'CSC_checkpoint/convnext_tiny-512/fold={i}-best.pth' for i in range(5)]}
     debug = False
 
 
-class CFG_CSC_FD:
-    label_file = 'sample_submission.csv'
+class CFG_CSC_FD(CFG_CSC):
+    label_file = 'test.csv'
     image_folder = 'test_images'
     out_file = 'submission.csv'
     # FD_checkpoint_dirs = {'convnext_tiny': ['FD_checkpoint/convnext_tiny-512/fold=0-best.pth',
@@ -50,7 +49,7 @@ class CFG_CSC_FD:
     #                                         'FD_checkpoint/convnext_tiny-512/fold=2-best.pth',
     #                                         'FD_checkpoint/convnext_tiny-512/fold=3-best.pth',
     #                                         'FD_checkpoint/convnext_tiny-512/fold=4-best.pth']}
-    FD_checkpoint_dirs = {'convnext_tiny': [f'FD_checkpoint/convnext_tiny-512/fold={i}-best.pth' for i in range(5)]}
+    checkpoint_dirs = {'convnext_tiny': [f'FD_checkpoint/convnext_tiny-512/fold={i}-best.pth' for i in range(5)]}
 
 
 def predict(model, loader, config):
@@ -63,6 +62,12 @@ def predict(model, loader, config):
             outputs = model(data)
             preds.append(outputs)
     return torch.cat(preds).sigmoid().cpu().numpy()
+
+
+def patient_prediction(df, label_cols):
+    c1c7 = np.average(df[label_cols].values, axis=0, weights=df[label_cols].values)
+    pred_patient_overall = 1 - np.prod(1 - c1c7)
+    return pd.Series(data=np.concatenate([[pred_patient_overall], c1c7]), index=['patient_overall'] + [f'C{i}' for i in range(1, 8)])
 
 
 def main():
@@ -85,7 +90,7 @@ def main():
 
     # Load model
     models = []
-    for model_name, checkpoint_dirs in config.CSC_checkpoint_dirs.items():
+    for model_name, checkpoint_dirs in config.checkpoint_dirs.items():
         for checkpoint_dir in checkpoint_dirs:
             # Initialize model
             model = RSNAClassifier(model_name, pretrained=config.pretrained,
@@ -107,11 +112,16 @@ def main():
         preds.append(predict(model, test_loader, config))
     preds = np.mean(preds, axis=0)
     # preds = (preds > 0.5).astype('int')
-    test_df = test_dataset.df
-    test_df[config.label_cols] = preds
-    # test_df.sort_values(config.img_cols, inplace=True)
-    test_df.to_csv(config.out_file, index=False, mode=config.mode, 
-                   header=True if config.mode=='w' else not os.path.exists(config.out_file))
+    pred_df = test_dataset.df.copy()
+    pred_df[config.label_cols] = preds
+    # pred_df.sort_values(config.img_cols, inplace=True)
+    if config == CFG_CSC:
+        pred_df.to_csv(config.out_file, index=False)
+    elif config == CFG_CSC_FD:
+        pred_df = pred_df.groupby(config.img_cols[0]).apply(lambda df: patient_prediction(df, config.label_cols)).reset_index()
+        test_df = test_df.merge(pred_df, on=config.img_cols[0])
+        test_df['fractured'] = test_df.apply(lambda row: row[row['prediction_type']], axis=1)
+        test_df[['row_id', 'fractured']].to_csv(config.out_file, index=False)
     print(test_df)
 
 
