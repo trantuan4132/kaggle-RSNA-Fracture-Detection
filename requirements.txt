@@ -12,3 +12,4 @@ wandb
 pydicom 
 python-gdcm 
 pylibjpeg
+PyYAML

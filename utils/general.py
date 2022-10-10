@@ -43,6 +43,12 @@ def load_nii(path):
     return ex.astype(np.uint8)
 
 
+class Struct:
+    """Convert dict to object"""
+    def __init__(self, **entries): 
+        self.__dict__.update(entries)
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):

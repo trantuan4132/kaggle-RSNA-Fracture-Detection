@@ -1,0 +1,44 @@
+## Dataset
+input_dir: '.'
+kfold: 5
+label_file: 'train_FD_fold5.csv'
+img_cols: ['StudyInstanceUID', 'Slice']
+label_cols: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+batch_size: 32
+image_size: 512
+num_workers: 2
+pin_memory: True
+seed: 42
+
+## Model
+device: 'cuda'
+model_name: 'convnext_tiny'
+num_classes: 7
+in_chans: 3
+drop_path_rate: 0.1
+pretrained: True                   # True: load pretrained model (may need internet for weight downloading), False: train from scratch 
+checkpoint_path: ''                # Path to model's pretrained weights
+
+## Training
+n_epochs: 1
+loss_fn: 'weighted_bce'
+optimizer: 'AdamW'
+learning_rate: 1.0e-4
+weight_decay: 1.0e-5
+lr_scheduler: 'CosineAnnealingWarmRestarts' # 'CosineAnnealingLR' #
+lr_scheduler_params: {
+    # 'T_max': 5,
+    'T_0': 5, 'T_mult': 1,
+    'eta_min': 1.0e-6,
+}
+resume: True                       # Resume training if True
+checkpoint_dir: 'FD_checkpoint'   # Directory to save new checkpoints
+save_freq: 2                       # Number of checkpoints to save after each epoch
+debug: False                       # Get a few samples for debugging
+_metric_to_use: ['acc', 'auc']     # Metric to be used
+_metric_to_opt: 'loss'              # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
+_use_tensorboard: False            # Whether to use tensorboard for logging
+_use_wandb: True                   # Whether to use wandb for logging
+_wandb_project: 'RSNA-FD-2022'    # Wandb's project name
+_wandb_entity: 'aip490'            # Wandb's account to save experiment result
+_wandb_resume_id: null             # Resume wandb logging if specify run id (e.g. '33fp7u8d')
