@@ -137,10 +137,10 @@ def run(fold, config):
     
     train_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/train_images", df=train_df, 
                                               img_cols=config.img_cols, label_cols=config.label_cols,
-                                              img_format='png', transform=train_transform)
+                                              img_format=config.img_format, transform=train_transform)
     val_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/train_images", df=val_df,
                                             img_cols=config.img_cols, label_cols=config.label_cols,
-                                            img_format='png', transform=val_transform)
+                                            img_format=config.img_format, transform=val_transform)
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True,
                               num_workers=config.num_workers, pin_memory=config.pin_memory)
     val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False,

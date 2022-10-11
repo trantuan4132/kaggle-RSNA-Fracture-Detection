@@ -4,6 +4,7 @@ kfold: 5
 label_file: 'train_FD_fold5.csv'
 img_cols: ['StudyInstanceUID', 'Slice']
 label_cols: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+img_format: 'jpg'
 batch_size: 64
 image_size: 384
 num_workers: 2
