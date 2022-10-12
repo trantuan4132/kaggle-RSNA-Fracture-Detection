@@ -5,4 +5,4 @@ CSV_SAVE_DIR = './'
 YOLO_PREDICT_DIR = '/content/yolov5/runs/predict-cls/exp2/labels'
 python classify/predict.py --source TEST_IMAGE_DIR --weights WEIGHTS --imgsz IMG_SIZE
 cd ..
-python get_results_csv.py --yolo-predict-dir  --save-dir CSV_SAVE_DIR
+python get_results_csv.py --yolo-predict-dir YOLO_PREDICT_DIR --save-dir CSV_SAVE_DIR
