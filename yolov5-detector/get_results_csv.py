@@ -25,7 +25,7 @@ def to_csv(predict_dir, save_dir):
         tmp = pd.DataFrame(data={'StudyInstanceUID': id, 'Slice': slc, 'fracture': fracture})
         res = pd.concat([res, tmp], axis=0, ignore_index=True)
     
-    res.to_csv(save_dir)
+    res.to_csv(save_dir, index=None)
     return res
 
 if __name__ == '__main__':
