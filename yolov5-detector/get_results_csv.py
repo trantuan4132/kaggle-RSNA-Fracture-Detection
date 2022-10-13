@@ -21,7 +21,7 @@ def to_csv(predict_dir, save_dir):
         df = pd.read_csv(path, sep=" ", header=None)
         id = [txt_file.split('_')[0]]
         slc = [txt_file.split('_')[1].split('.')[0]]
-        fracture = [df.iloc[0,0]]
+        fracture = [df.loc[df[1] == 'fracture', 0].iloc[-1]]
         tmp = pd.DataFrame(data={'StudyInstanceUID': id, 'Slice': slc, 'fracture': fracture})
         res = pd.concat([res, tmp], axis=0, ignore_index=True)
     
