@@ -69,9 +69,11 @@ def load_nii(path):
     return ex.astype(np.uint8)
 
 
-def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations', image_dir='train_images', reverse_lst=[]):
+def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations', image_dir='train_images', seg_label2idx=None, reverse_lst=[]):
     """Extract vertebrae labels from segmentation"""
     label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+    if seg_label2idx is None:
+        seg_label2idx = {i+1: i for i in range(7)}
     
     def extract(path, image_dir='train_images', reverse_lst=[]):
         def remove_outlier(seg_labels, direct='td'):
@@ -100,14 +102,15 @@ def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations',
         seg = load_nii(path)
 
         # Get list of slices from directory
-        uid = os.path.basename(path)[:-len('.nii')]
+        uid = os.path.basename(path)
+        uid = uid[:uid.rfind('.nii')]
         slice_lst = sorted([int(f[:f.rfind('.')]) for f in os.listdir(f"{image_dir}/{uid}")], 
                            reverse=uid in reverse_lst)
         
         # Get list of labels each slice
         seg_labels = []
         for idx in range(len(seg)):
-            seg_labels.append(set(seg[idx].flatten()) & set(range(1, 8)))
+            seg_labels.append(set(seg[idx].flatten()) & set(seg_label2idx.keys()))
             
         # Remove outliers
         seg_labels = remove_outlier(seg_labels, direct='td')    # Top-down
@@ -118,13 +121,13 @@ def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations',
         for idx, slice in enumerate(slice_lst):
             labels = np.zeros(7, dtype=int)
             if len(seg_labels[idx]) > 0:
-                labels[np.array(list(seg_labels[idx]))-1] = 1
+                labels[[seg_label2idx[l] for l in seg_labels[idx]]] = 1
             seg_lst.append([uid, slice] + list(labels))
         return seg_lst
                 
     seg_lst = Parallel(n_jobs=-1)(
         delayed(extract)(path, image_dir, reverse_lst)
-        for path in tqdm(glob.glob(f"{segmentation_dir}/*")) if path.endswith(".nii")
+        for path in tqdm(glob.glob(f"{segmentation_dir}/*")) if path.endswith((".nii", ".nii.gz"))
     )
     seg_lst = sum(seg_lst, [])
 
@@ -176,7 +179,8 @@ if __name__ == "__main__":
 
         # Extract vertebrae labels
         seg_df = extract_vertebrae_labels_from_segmentation(segmentation_dir=args.seg_dir, 
-                                                            image_dir=args.image_dir, 
+                                                            image_dir=args.image_dir,
+                                                            seg_label2idx={i+1: i for i in range(7)}, # {41-i: i for i in range(7)}
                                                             reverse_lst=reverse_lst)
         seg_df.to_csv(f"{args.out_dir}/train_CSC.csv", index=False)
 

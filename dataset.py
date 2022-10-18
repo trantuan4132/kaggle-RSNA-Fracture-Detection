@@ -2,6 +2,7 @@ import os, glob, zipfile
 import cv2
 from torch.utils.data import Dataset
 import albumentations as A
+from albumentations.core.transforms_interface import ImageOnlyTransform
 from albumentations.pytorch import ToTensorV2
 import pandas as pd
 import numpy as np
@@ -75,6 +76,13 @@ class RSNAClassificationDataset(Dataset):
         return (image, label)
 
 
+class RandomCircularCrop(ImageOnlyTransform):
+    def apply(self, image, **params):
+        mask = np.zeros(image.shape)
+        return image * cv2.circle(mask, center=(mask.shape[0]//2, mask.shape[1]//2), 
+                                  radius=image.shape[0]//2, color=(1,1,1), thickness=-1)
+
+
 def build_transform(image_size=None, is_train=True, include_top=True, additional_targets=None):
     """
     Builds a transformations pipeline for the data.
@@ -105,6 +113,7 @@ def build_transform(image_size=None, is_train=True, include_top=True, additional
             # ], p=0.2),
             # A.PiecewiseAffine(p=0.2),
             # A.Sharpen(p=0.2),
+            RandomCircularCrop(p=0.5),
             A.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.3, rotate_limit=30, border_mode=0, p=0.5),
             A.CoarseDropout(max_height=int(image_size*0.2), max_width=int(image_size*0.2), 
                             min_holes=1, max_holes=4, p=0.5),

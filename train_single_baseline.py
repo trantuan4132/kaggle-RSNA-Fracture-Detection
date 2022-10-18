@@ -1,4 +1,5 @@
-import os, glob
+import os, glob, argparse
+import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,65 +18,6 @@ import matplotlib.pyplot as plt
 from dataset import *
 from model import *
 from utils import *
-
-
-class CFG_CSC:
-    
-    ## Dataset
-    input_dir = '.'
-    kfold = 5
-    fold = 0                            # 0 ⟶ (kfold-1): train 1 fold only, 'all': train all folds sequentially
-    label_file = f'train_CSC_fold{kfold}.csv'
-    img_cols = ['StudyInstanceUID', 'Slice']
-    label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
-    batch_size = 32
-    image_size = 512
-    num_workers = 2
-    pin_memory = True
-    seed = 42
-
-    ## Model
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_name = 'convnext_tiny'
-    in_chans = 3
-    num_classes = len(label_cols)
-    drop_path_rate = 0.1
-    pretrained = True                   # True: load pretrained model (may need internet for weight downloading), False: train from scratch 
-    checkpoint_path = ''                # Path to model's pretrained weights
-
-    ## Training
-    n_epochs = 15
-    loss_fn = 'bce'
-    optimizer = 'AdamW'
-    learning_rate = 1e-4
-    weight_decay = 1e-5
-    lr_scheduler = 'CosineAnnealingWarmRestarts' # 'CosineAnnealingLR' #
-    lr_scheduler_params = {
-        # 'T_max': 5,
-        'T_0': 5, 'T_mult': 1,
-        'eta_min': 1e-6,
-    }
-    resume = True                       # Resume training if True
-    checkpoint_dir = 'CSC_checkpoint'   # Directory to save new checkpoints
-    save_freq = 2                       # Number of checkpoints to save after each epoch
-    debug = False                       # Get a few samples for debugging
-    _metric_to_use = ['acc', 'auc']     # Metric to be used
-    _metric_to_opt = 'auc'              # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
-    _use_tensorboard = False            # Whether to use tensorboard for logging
-    _use_wandb = True                   # Whether to use wandb for logging
-    _wandb_project = 'RSNA-CSC-2022'    # Wandb's project name
-    _wandb_entity = 'aip490'            # Wandb's account to save experiment result
-    _wandb_resume_id = None             # Resume wandb logging if specify run id (e.g. '33fp7u8d')
-
-
-class CFG_FD(CFG_CSC):
-    kfold = 5
-    label_file = f'train_FD_fold{kfold}.csv'
-    loss = 'weighted_bce'
-    checkpoint_dir = 'FD_checkpoint'    # Directory to save new checkpoints
-    _metric_to_use = []                 # Metric to be used
-    _metric_to_opt = 'loss'             # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
-    _wandb_project = 'RSNA-FD-2022'     # Wandb's project name
 
 
 # class FocalLoss(nn.Module):
@@ -195,10 +137,10 @@ def run(fold, config):
     
     train_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/train_images", df=train_df, 
                                               img_cols=config.img_cols, label_cols=config.label_cols,
-                                              img_format='png', transform=train_transform)
+                                              img_format=config.img_format, transform=train_transform)
     val_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/train_images", df=val_df,
                                             img_cols=config.img_cols, label_cols=config.label_cols,
-                                            img_format='png', transform=val_transform)
+                                            img_format=config.img_format, transform=val_transform)
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True,
                               num_workers=config.num_workers, pin_memory=config.pin_memory)
     val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False,
@@ -301,19 +243,32 @@ def run(fold, config):
         wandb.finish()
 
 def main():
-    config = CFG_CSC
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--CFG', type=str, default='config/CFG_CSC_512.yaml', 
+                        help='Path to the configuration file')
+    parser.add_argument('--fold', type=str, default='all', 
+                        help="0 ⟶ (kfold-1): train 1 fold only, 'all': train all folds sequentially")
+    args = parser.parse_args()
+
+    # Load configuration from file
+    with open(args.CFG, mode='r') as stream:
+        config = Struct(**yaml.safe_load(stream))
     set_seed(config.seed)
     if os.path.exists('/kaggle/input'):
         config.input_dir = '../input/rsna-2022-cervical-spine-fracture-detection'
-    if os.path.exists('/content/drive/MyDrive'):
+    if os.path.exists('/content/drive/MyDrive') and not config.checkpoint_dir.startswith(('/content/drive', 'drive')):
         config.checkpoint_dir = os.path.join('/content/drive/MyDrive/rsna-checkpoint', config.checkpoint_dir, 
                                             f'{config.model_name}-{config.image_size}')
+    config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    config.num_classes = len(config.label_cols)
 
     # Train model
-    if config.fold == 'all':
+    if args.fold == 'all':
         for fold in range(config.kfold):
             run(fold, config)
     else:
+        config.fold = int(args.fold)
         run(config.fold, config)
 
 if __name__ == "__main__":
