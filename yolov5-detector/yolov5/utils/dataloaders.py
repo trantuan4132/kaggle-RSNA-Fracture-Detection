@@ -250,7 +250,7 @@ class LoadScreenshots:
 
 class LoadImages:
     # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
-    def __init__(self, path, dataframe, img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
+    def __init__(self, path, dataframe=None, img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
         files = []
         for p in sorted(path) if isinstance(path, (list, tuple)) else [path]:
             p = str(Path(p).resolve())
@@ -263,7 +263,10 @@ class LoadImages:
             else:
                 raise FileNotFoundError(f'{p} does not exist')
 
-        images = [x for x in files if (x.split('.')[-1].lower() in IMG_FORMATS) and (dataframe.loc[(dataframe['StudyInstanceUID']==x.split('/')[-2]) & (dataframe['Slice']==int(x.split('/')[-1].split('.')[0]))].shape[0]==1)]
+        if dataframe is not None:
+            images = [x for x in files if (x.split('.')[-1].lower() in IMG_FORMATS) and (dataframe.loc[(dataframe['StudyInstanceUID']==x.split('/')[-2]) & (dataframe['Slice']==int(x.split('/')[-1].split('.')[0]))].shape[0]==1)]
+        else:
+            images = [x for x in files if (x.split('.')[-1].lower() in IMG_FORMATS)]
         videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
         ni, nv = len(images), len(videos)
 
