@@ -36,7 +36,7 @@ def to_csv(predict_dir, save_dir, detect=False):
             id = [txt_file.split('_')[0]]
             slc = [txt_file.split('_')[1].split('.')[0]]
             df['StudyInstanceUID'] = id
-            df['Slice'] = slc
+            df['slice_num'] = slc
             if i == 0:
                 res = df
             else:
