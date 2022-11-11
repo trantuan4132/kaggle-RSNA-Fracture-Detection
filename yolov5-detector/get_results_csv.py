@@ -15,9 +15,9 @@ def parse_args():
     return parser.parse_args()
 
 def to_csv(predict_dir, save_dir, detect=False):
+    res = pd.DataFrame()
     if not detect:
         txt_files_list = os.listdir(predict_dir)
-        res = pd.DataFrame()
         for i, txt_file in enumerate(txt_files_list):
             # set the path
             path = f'{predict_dir}/{txt_file}'
@@ -31,16 +31,14 @@ def to_csv(predict_dir, save_dir, detect=False):
         txt_files_list = os.listdir(predict_dir)
         for i, txt_file in enumerate(txt_files_list):
             cols = ['class', 'x-center', 'y-center', 'bbox_width', 'bbox_height', 'conf-score']
+            path = f'{predict_dir}/{txt_file}'
             df = pd.read_csv(path, sep=" ", header=None)
             df.columns = cols
             id = [txt_file.split('_')[0]]
             slc = [txt_file.split('_')[1].split('.')[0]]
             df['StudyInstanceUID'] = id
-            df['Slice'] = slc
-            if i == 0:
-                res = df
-            else:
-                res = pd.concat([res, df], axis=0, ignore_index=True)
+            df['slice_num'] = slc
+            res = pd.concat([res, df], axis=0, ignore_index=True)
             
     
     res.to_csv(save_dir, index=None)
