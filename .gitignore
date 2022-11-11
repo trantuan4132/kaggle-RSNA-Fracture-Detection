@@ -145,3 +145,6 @@ sample_submission.csv
 log
 utils/cam_vis.py
 utils/debug.py
+.kaggle/
+yolo/
+nhap.ipynb
