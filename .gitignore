@@ -148,3 +148,4 @@ utils/debug.py
 .kaggle/
 yolo/
 nhap.ipynb
+*.csv
