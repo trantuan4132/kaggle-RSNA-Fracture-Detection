@@ -6,7 +6,7 @@ import timm
 
 class RSNAClassifier(nn.Module):
     def __init__(self, model_name, pretrained=False, checkpoint_path='', 
-                 in_chans=3, num_classes=1000, drop_path_rate=0.0):
+                 in_chans=3, num_classes=1000, drop_path_rate=0.0, use_seq_layer=False):
         """
         Args:
         -----
@@ -29,11 +29,23 @@ class RSNAClassifier(nn.Module):
                                        drop_path_rate=drop_path_rate)
         n_features = self.model.get_classifier().in_features
         self.model.reset_classifier(num_classes=0)
-        self.fc = nn.Linear(n_features, num_classes)
+        self.rnn = None
+        if use_seq_layer:
+            self.rnn = nn.LSTM(n_features, n_features, batch_first=True, bidirectional=True)
+            self.fc = nn.Linear(n_features * 2, num_classes)
+        else:
+            self.fc = nn.Linear(n_features, num_classes)
 
     def forward(self, x):
-        x = self.model(x)
-        return self.fc(x)
+        if self.rnn is not None:
+            batch_size, seqlen, ch, h, w = x.shape # (2, 32, 3, 512, 512)
+            x = x.view(-1, ch, h, w) # (64, 3, 512, 512)
+            x = self.model(x) # (64, n_features)
+            x = x.view(batch_size, seqlen, -1) # (2, 32, n_features)
+            out = self.rnn(x)[0] # (2, 32, n_features * 2)
+        else:
+            out = self.model(x)
+        return self.fc(out)
 
 
 if __name__ == '__main__':
