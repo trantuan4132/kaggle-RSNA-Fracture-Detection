@@ -64,10 +64,10 @@ class MLPAttentionNetwork(nn.Module):
         return attn_x
 
 class RSNAClassifierWithAttention(nn.Module):
-    def __init__(self, model_name, pretrained=False, hidden_dim=256,
-                 checkpoint_path='', drop_path_rate=0.0, dropout=0.1):
+    def __init__(self, model_name, pretrained=False, checkpoint_path='', 
+                 in_chans=3, hidden_dim=256, num_classes=1000, drop_path_rate=0.0, dropout=0.1):
         super(RSNAClassifierWithAttention, self).__init__()
-        self.model = timm.create_model(model_name, pretrained=pretrained,
+        self.model = timm.create_model(model_name, in_chans=in_chans, pretrained=pretrained,
                                        checkpoint_path=checkpoint_path,
                                        drop_path_rate=drop_path_rate)
         n_features = self.model.get_classifier().in_features
@@ -79,7 +79,7 @@ class RSNAClassifierWithAttention(nn.Module):
             nn.Linear(hidden_dim*2, 128),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(128, 1)
+            nn.Linear(128, num_classes)
         )
 
         for n, m in self.named_modules():
