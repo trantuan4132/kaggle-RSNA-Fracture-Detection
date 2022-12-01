@@ -64,26 +64,16 @@ class MLPAttentionNetwork(nn.Module):
         return attn_x
 
 class RSNAClassifierWithAttention(nn.Module):
-    def __init__(self, model_name, pretrained=False, hidden_dim=256, seq_len=24,
+    def __init__(self, model_name, pretrained=False, hidden_dim=256,
                  checkpoint_path='', drop_path_rate=0.0, dropout=0.1):
         super(RSNAClassifierWithAttention, self).__init__()
-        self.seq_len = seq_len
-        self.model_name = model_name
         self.model = timm.create_model(model_name, pretrained=pretrained,
                                        checkpoint_path=checkpoint_path,
                                        drop_path_rate=drop_path_rate)
-
-        if 'efficientnet' in model_name:
-            cnn_feature = self.model.classifier.in_features
-            self.model.classifier = nn.Identity()
-        elif "res" in model_name:
-            cnn_feature = self.model.fc.in_features
-            self.model.global_pool = nn.Identity()
-            self.model.fc = nn.Identity()
-            self.pooling = nn.AdaptiveAvgPool2d(1)
-        
+        n_features = self.model.get_classifier().in_features
+        self.model.reset_classifier(num_classes=0)
         self.spatialdropout = SpatialDropout(dropout)
-        self.gru = nn.GRU(cnn_feature, hidden_dim, 2, batch_first=True, bidirectional=True)
+        self.rnn = nn.GRU(n_features, hidden_dim, num_layers=2, batch_first=True, bidirectional=True)
         self.mlp_attention_layer = MLPAttentionNetwork(2 * hidden_dim)
         self.logits = nn.Sequential(
             nn.Linear(hidden_dim*2, 128),
@@ -101,20 +91,17 @@ class RSNAClassifierWithAttention(nn.Module):
                     else:
                         nn.init.normal_(param.data)
         
-    def forward(self, x): # (B, seq_len, H, W)
-        bs = x.size(0) 
-        x = x.reshape(bs*self.seq_len, 1, x.size(2), x.size(3)) # (B*seq_len, 1, H, W)
-        features = self.model(x)   
-        if "res" in self.model_name:                             
-            features = self.pooling(features).view(bs*self.seq_len, -1) # (B*seq_len, cnn_feature)
-        features = self.spatialdropout(features)                # (B*seq_len, cnn_feature)
-        # print(features.shape)
-        features = features.reshape(bs, self.seq_len, -1)       # (B, seq_len, cnn_feature)
-        features, _ = self.gru(features)                        # (B, seq_len, hidden_dim*2)
-        atten_out = self.mlp_attention_layer(features)          # (B, hidden_dim*2)
-        pred = self.logits(atten_out)                           # (B, 1)
-        pred = pred.view(bs, -1)                                # (B, 1)
-        return pred
+    def forward(self, x): # (B, seq_len, H, W) or (B, seq_len, C, H, W)
+        bs, seqlen, h, w = *x.shape[:2], *x.shape[-2:]          
+        x = x.view(bs*seqlen, -1, h, w)                         # (B*seq_len, C, H, W)
+        x = self.model(x)                                       # (B*seq_len, n_features)
+        x = self.spatialdropout(x)
+        # print(x.shape)
+        x = x.view(bs, seqlen, -1)                              # (B, seq_len, n_features)
+        x = self.rnn(x)[0]                                      # (B, seq_len, hidden_dim*2)
+        x = self.mlp_attention_layer(x)                         # (B, hidden_dim*2)
+        x = self.logits(x)                                      # (B, 1)
+        return x
 
 
 class RSNAClassifier(nn.Module):
@@ -155,10 +142,10 @@ class RSNAClassifier(nn.Module):
             x = x.view(-1, ch, h, w) # (64, 3, 512, 512)
             x = self.model(x) # (64, n_features)
             x = x.view(batch_size, seqlen, -1) # (2, 32, n_features)
-            out = self.rnn(x)[0] # (2, 32, n_features * 2)
+            x = self.rnn(x)[0] # (2, 32, n_features * 2)
         else:
-            out = self.model(x)
-        return self.fc(out)
+            x = self.model(x)
+        return self.fc(x)
 
 
 if __name__ == '__main__':
