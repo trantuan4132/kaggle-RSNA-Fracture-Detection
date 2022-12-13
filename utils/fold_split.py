@@ -8,6 +8,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--label_path', type=str, default='train.csv',
                         help='Path to the label file')
+    parser.add_argument('--label_cols', type=str, nargs='+',
+                        default=['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'], 
+                        help='Label columns used for fold splitting')
+    parser.add_argument('--multi_label', action='store_true',
+                        help='Whether label is multilabel or multiclass')
     parser.add_argument('--kfold', type=int, default=5,
                         help='Number of folds')
     parser.add_argument('--save_path', type=str, default='train_fold5.csv',
@@ -48,15 +53,17 @@ def fold_split(df, kfold=5, y=None, groups=None):
 
 def main():
     args = parse_args()
-    label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
-    df = pd.read_csv(args.label_path)
-    combined_label = df[label_cols].astype('str').values.sum(axis=1)
-    combined_label = pd.Series(combined_label).apply(lambda x: int(x, 2))
+    df = pd.read_pickle(args.label_path) if args.label_path.endswith('.pkl') else pd.read_csv(args.label_path)
+    if args.multi_label:
+        combined_label = (df[args.label_cols] > 0).astype('int').astype('str').values.sum(axis=1)
+        y = pd.Series(combined_label).apply(lambda x: int(x, 2))
+    else:
+        y = df[args.label_cols]
     groups = df['StudyInstanceUID']
 
-    df = fold_split(df, args.kfold, y=combined_label, groups=groups)
+    df = fold_split(df, args.kfold, y=y, groups=groups)
     # save_path = args.label_path.replace('.csv', f'_fold{args.kfold}.csv')
-    df.to_csv(args.save_path, index=False)
+    df.to_pickle(args.save_path) if args.label_path.endswith('.pkl') else df.to_csv(args.save_path, index=False)
     print(df)
 
     # # Plot fold distribution
