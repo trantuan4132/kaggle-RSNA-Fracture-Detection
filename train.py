@@ -39,22 +39,39 @@ from utils import *
 #         return focal_loss
 
 
-class WeightedBCELoss(nn.Module):
-    def __init__(self, weights=[2, 1], reduction='mean'):
+class WeightedLoss(nn.Module):
+    def __init__(self, loss_fn='bce', weights=[2, 1], reduction='mean'):
         super().__init__()
+        self.loss_fn = nn.BCEWithLogitsLoss(reduction='none') if loss_fn=='bce' else nn.MSELoss(reduction='none')
         self.weights = weights
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        loss = F.binary_cross_entropy_with_logits(
-            inputs, targets, reduction='none'
-        )
-        weights = targets * self.weights[0] + (1-targets) * self.weights[1]
+        loss = self.loss_fn(inputs, targets)
+        weights = (targets!=0) * self.weights[0] + (targets==0) * self.weights[1]
         loss = (loss * weights).sum(axis=1) / weights.sum(axis=1)
         if self.reduction == 'mean':
             return loss.mean()
         elif self.reduction == 'sum':
             return loss.sum()
+        return loss
+
+
+class BoxLoss(nn.Module):
+    def __init__(self, bb_loss_fn=nn.L1Loss(), 
+                 cls_loss_fn=nn.BCEWithLogitsLoss(), 
+                 weights=[0.8, 0.2]):
+        super().__init__()
+        self.bb_loss_fn = bb_loss_fn
+        self.cls_loss_fn = cls_loss_fn
+        self.weights = weights
+
+    def forward(self, inputs, targets):
+        pos_idx = (targets[..., 4:] > 0.5).any(axis=-1)
+        bb_loss = self.bb_loss_fn(inputs[pos_idx, :4], targets[pos_idx, :4]) \
+                  if pos_idx.sum().item() > 0 else 0
+        cls_loss = self.cls_loss_fn(inputs[..., 4:], targets[..., 4:]) 
+        loss = self.weights[0] * bb_loss + self.weights[1] * cls_loss
         return loss
 
 
@@ -65,7 +82,7 @@ def train_one_epoch(model, loader, criterion, optimizer, scaler, config):
     # with tqdm(total=len(loader)) as tepoch:
     for batch_idx, (data, targets) in enumerate(tepoch):
         data = data.to(config.device) 
-        targets = targets.to(config.device)
+        targets = targets.float().to(config.device)
 
         # Forward pass
         with torch.cuda.amp.autocast():
@@ -110,21 +127,24 @@ def valid_one_epoch(model, loader, criterion, config):
 
     # Calculate accuracy and AUC score
     metrics = {}
-    preds = torch.cat(preds).sigmoid().cpu().detach().numpy()
-    gts = torch.cat(gts).cpu().detach().numpy()
-    if 'acc' in config._metric_to_use:
-        metrics['acc'] = np.mean(np.mean((preds > 0.5) == gts, axis=0))
-    if 'auc' in config._metric_to_use:
-        auc_scores = {}
-        for i, col in enumerate(config.label_cols):
-            auc_scores[col] = roc_auc_score(gts[:, i], preds[:, i])
-        metrics['auc'] = np.mean(list(auc_scores.values()))
+    if len(config._metric_to_use) > 0:
+        preds = torch.cat(preds).sigmoid().cpu().detach().numpy()
+        gts = torch.cat(gts).cpu().detach().numpy()
+        if 'acc' in config._metric_to_use:
+            metrics['acc'] = np.mean(np.mean((preds > 0.5) == gts, axis=0))
+        if 'auc' in config._metric_to_use:
+            auc_scores = {}
+            for i, col in enumerate(config.label_cols[4:] if config.bbox_label else config.label_cols):
+                auc_scores[col] = roc_auc_score(gts[:, i], preds[:, i])
+            metrics['auc'] = np.mean(list(auc_scores.values()))
     return running_loss.avg, metrics
 
 
 def run(fold, config):
     # Prepare train and val set
-    full_train_df = pd.read_csv(f'{config.input_dir}/{config.label_file}')
+    full_train_df = pd.read_pickle(f'{config.input_dir}/{config.label_file}') \
+                    if config.label_file.endswith('.pkl') \
+                    else pd.read_csv(f'{config.input_dir}/{config.label_file}')
     train_df = full_train_df.query(f"fold!={fold}")
     val_df = full_train_df.query(f"fold=={fold}")
 
@@ -132,25 +152,38 @@ def run(fold, config):
         train_df = train_df.sample(80)
         val_df = val_df.sample(640)
 
-    train_transform = build_transform(config.image_size, is_train=True, include_top=True)
-    val_transform = build_transform(config.image_size, is_train=False, include_top=True)
+    kwargs = dict(additional_targets=dict((f'image{i}', 'image') for i in range(config.seq_len-1 if config.seq_len else 0)))
+    if config.bbox_label: 
+        kwargs['bbox_params'] = A.BboxParams(format='albumentations', label_fields=['class_labels'])
+
+    train_transform = build_transform(config.image_size, is_train=True, include_top=True, **kwargs)
+    val_transform = build_transform(config.image_size, is_train=False, include_top=True, **kwargs)
     
-    train_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/train_images", df=train_df, 
+    train_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/{config.image_dir}", df=train_df, 
                                               img_cols=config.img_cols, label_cols=config.label_cols,
-                                              img_format=config.img_format, transform=train_transform)
-    val_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/train_images", df=val_df,
+                                              img_format=config.img_format, bbox_label=config.bbox_label, 
+                                              transform=train_transform, use_2dot5D=config.use_2dot5D, 
+                                              overlap=True, seq_len=config.seq_len, crop_cols=config.crop_cols)
+    val_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/{config.image_dir}", df=val_df,
                                             img_cols=config.img_cols, label_cols=config.label_cols,
-                                            img_format=config.img_format, transform=val_transform)
+                                            img_format=config.img_format, bbox_label=config.bbox_label, 
+                                            transform=val_transform, use_2dot5D=config.use_2dot5D, 
+                                            overlap=True, seq_len=config.seq_len, crop_cols=config.crop_cols)
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True,
                               num_workers=config.num_workers, pin_memory=config.pin_memory)
     val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False,
                             num_workers=config.num_workers, pin_memory=config.pin_memory)
+    
+    # Train on full data
+    if len(val_dataset) == 0: 
+        config._metric_to_opt = 'loss'
+        config._metric_to_use = []
 
     # Initialize model
     model = RSNAClassifier(config.model_name, pretrained=config.pretrained,
                            checkpoint_path=config.checkpoint_path, 
                            in_chans=config.in_chans, num_classes=config.num_classes,
-                           drop_path_rate=config.drop_path_rate)
+                           drop_path_rate=config.drop_path_rate, use_seq_layer=config.use_seq_layer)
     model = model.to(config.device)
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Number of params: {n_parameters}")
@@ -158,7 +191,14 @@ def run(fold, config):
 
     # Set up training
     start_epoch = 0
-    criterion = WeightedBCELoss() if config.loss_fn == 'weighted_bce' else nn.BCEWithLogitsLoss()
+    criterion_lst = {
+        'bce': nn.BCEWithLogitsLoss(),
+        'weighted_bce': WeightedLoss(loss_fn='bce', weights=config.weights),
+        'weighted_mse': WeightedLoss(loss_fn='mse', weights=config.weights),
+        'box': BoxLoss(weights=config.weights),
+        'box_ratio': BoxLoss(weights=config.weights, cls_loss_fn=nn.L1Loss()),
+    }
+    criterion = criterion_lst[config.loss_fn]
     optimizer = eval(f"optim.{config.optimizer}(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)")
     scheduler = eval(f"optim.lr_scheduler.{config.lr_scheduler}(optimizer, **config.lr_scheduler_params)")
     scaler = torch.cuda.amp.GradScaler()
@@ -180,7 +220,7 @@ def run(fold, config):
         wandb.init(project=config._wandb_project, name=f'{config.model_name}-{config.image_size}-fold{fold}',
                    entity=config._wandb_entity, config={k: v for k, v in vars(config).items() if not k.startswith('_')},
                    id=config._wandb_resume_id, resume='must' if config._wandb_resume_id else None)
-        wandb.define_metric("val/loss", summary="min")
+        if len(val_dataset) > 0: wandb.define_metric("val/loss", summary="min")
         for metric in config._metric_to_use:
             wandb.define_metric(f"val/{metric}", summary="max")
 
@@ -196,14 +236,16 @@ def run(fold, config):
         # Log to file
         log_stats = {
             'fold': fold, 'epoch': epoch, 'n_parameters': n_parameters,
-            'train_loss': train_loss, 'val_loss': val_loss,
+            'train_loss': train_loss,
         }
+        if len(val_dataset) > 0: log_stats['val_loss'] = val_loss
         for metric in config._metric_to_use:
             log_stats['val_' + metric] = metrics[metric]
         log_to_file(log_stats, "log.txt", config.checkpoint_dir)
 
         # Wandb logging
-        log_dict = {'train/loss': train_loss, 'val/loss': val_loss}
+        log_dict = {'train/loss': train_loss}
+        if len(val_dataset) > 0: log_dict['val/loss'] = val_loss
         for metric in config._metric_to_use:
             log_dict['val/' + metric] = metrics[metric]
         if config._use_wandb:
@@ -222,7 +264,7 @@ def run(fold, config):
             'scaler': scaler.state_dict(),
             'epoch': epoch,
         }
-        score = log_stats['val_' + config._metric_to_opt]
+        score = log_stats[('val_' if len(val_dataset) > 0 else 'train_') + config._metric_to_opt]
         save_path = f"{config.checkpoint_dir}/fold={fold}-epoch={epoch}-{config._metric_to_opt}={score:.4f}.pth"
         save_checkpoint(checkpoint, save_path)
         if (score > best_score and config._metric_to_opt != 'loss') or \
@@ -245,7 +287,7 @@ def run(fold, config):
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--CFG', type=str, default='config/CFG_CSC_512.yaml', 
+    parser.add_argument('--CFG', type=str, default='config/CFG_FD.yaml', 
                         help='Path to the configuration file')
     parser.add_argument('--fold', type=str, default='all', 
                         help="0 ⟶ (kfold-1): train 1 fold only, 'all': train all folds sequentially")
