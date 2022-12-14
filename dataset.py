@@ -199,7 +199,8 @@ if __name__ == "__main__":
 
     # Configuration
     stage = 1
-    image_dir = 'train_images'
+    input_dir = 'dataset'
+    image_dir = f'{input_dir}/train_images'
     use_2dot5D = True
     n_rows = 3
     n_cols = 6
@@ -209,14 +210,14 @@ if __name__ == "__main__":
         img_cols = ['StudyInstanceUID', 'Slice']
         crop_cols = None
         label_cols = ['x0', 'y0', 'x1', 'y1', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
-        df = pd.read_csv('train_vert_bbox_fold5.csv')
+        df = pd.read_csv(f'{input_dir}/train_vert_bbox_fold5.csv')
         bbox_label = True 
         seq_len = None
     elif stage == 2:
         img_cols = ['StudyInstanceUID', 'Slice', 'vertebrae']
         crop_cols = ['x0', 'y0', 'x1', 'y1']
         label_cols = ['fractured']
-        df = pd.read_pickle('vertebrae_df_fold5.pkl')
+        df = pd.read_pickle(f'{input_dir}/vertebrae_df_fold5.pkl')
         bbox_label = False
         seq_len = 24
 
