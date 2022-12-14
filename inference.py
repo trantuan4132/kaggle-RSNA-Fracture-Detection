@@ -173,7 +173,7 @@ def main():
 
     # Load configuration from file
     config = load_config(args.CFG)
-    config.image_dir = args.image_dir
+    if args.image_dir: config.image_dir = args.image_dir
     
     # Generate prediction
     if config.name == 'CFG_vert_bbox_ratio_FD':
