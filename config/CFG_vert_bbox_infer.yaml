@@ -1,0 +1,32 @@
+## Dataset
+input_dir: 'dataset'
+label_file: 'train.csv'
+img_cols: ['StudyInstanceUID', 'Slice']
+label_cols: ['x0', 'y0', 'x1', 'y1', 'vertebrae']
+crop_cols: []
+image_dir: 'train_images'
+img_format: 'jpg'
+bbox_label: True
+vert_ratio: False
+use_2dot5D: True
+seq_len: null
+batch_size: 64
+image_size: 384
+num_workers: 2
+pin_memory: True
+seed: 42
+out_file: 'infer_vert_bbox.pkl'
+
+## Model
+in_chans: 3
+num_classes: 5
+drop_path_rate: 0.1
+use_seq_layer: False
+pretrained: False                       # True: load pretrained model, False: train from scratch
+checkpoint_path: ''                    # Path to model's pretrained weights
+checkpoint_dirs: {'convnext_tiny': ['vert_bbox_checkpoint/convnext_tiny-384/fold=0-best.pth',
+                                    'vert_bbox_checkpoint/convnext_tiny-384/fold=1-best.pth',
+                                    'vert_bbox_checkpoint/convnext_tiny-384/fold=2-best.pth',
+                                    'vert_bbox_checkpoint/convnext_tiny-384/fold=3-best.pth',
+                                    'vert_bbox_checkpoint/convnext_tiny-384/fold=4-best.pth']}
+debug: False

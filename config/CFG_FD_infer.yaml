@@ -1,0 +1,32 @@
+## Dataset
+input_dir: 'dataset'
+label_file: 'vertebrae_df.csv'
+img_cols: ['StudyInstanceUID', 'Slice', 'vertebrae']
+label_cols: ['fractured']
+crop_cols: ['x0', 'y0', 'x1', 'y1']
+image_dir: 'test_images'
+img_format: 'jpg'
+bbox_label: False
+vert_ratio: False
+use_2dot5D: True
+seq_len: 24
+batch_size: 16
+image_size: 320
+num_workers: 2
+pin_memory: True
+seed: 42
+out_file: 'submission.csv'
+
+## Model
+in_chans: 3
+num_classes: 1
+drop_path_rate: 0.1
+use_seq_layer: True
+pretrained: False                       # True: load pretrained model, False: train from scratch
+checkpoint_path: ''                    # Path to model's pretrained weights
+checkpoint_dirs: {'convnext_tiny': ['FD_checkpoint/convnext_tiny-384/fold=0-best.pth',
+                                    'FD_checkpoint/convnext_tiny-384/fold=1-best.pth',
+                                    'FD_checkpoint/convnext_tiny-384/fold=2-best.pth',
+                                    'FD_checkpoint/convnext_tiny-384/fold=3-best.pth',
+                                    'FD_checkpoint/convnext_tiny-384/fold=4-best.pth']}
+debug: False

@@ -1,0 +1,32 @@
+## Dataset
+input_dir: 'dataset'
+label_file: 'train.csv'
+img_cols: ['StudyInstanceUID', 'Slice']
+label_cols: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+crop_cols: []
+image_dir: 'train_images'
+img_format: 'jpg'
+bbox_label: False
+vert_ratio: False
+use_2dot5D: True
+seq_len: null
+batch_size: 64
+image_size: 384
+num_workers: 2
+pin_memory: True
+seed: 42
+out_file: 'train_CSC_full.csv'
+
+## Model
+in_chans: 3
+num_classes: 7
+drop_path_rate: 0.1
+use_seq_layer: False
+pretrained: False                       # True: load pretrained model, False: train from scratch
+checkpoint_path: ''                    # Path to model's pretrained weights
+checkpoint_dirs: {'convnext_tiny': ['CSC_checkpoint/convnext_tiny-384/fold=0-best.pth',
+                                    'CSC_checkpoint/convnext_tiny-384/fold=1-best.pth',
+                                    'CSC_checkpoint/convnext_tiny-384/fold=2-best.pth',
+                                    'CSC_checkpoint/convnext_tiny-384/fold=3-best.pth',
+                                    'CSC_checkpoint/convnext_tiny-384/fold=4-best.pth']}
+debug: False

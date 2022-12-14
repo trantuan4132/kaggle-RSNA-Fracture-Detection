@@ -1,10 +1,15 @@
 ## Dataset
-input_dir: '.'
+input_dir: 'dataset'
 kfold: 5
-label_file: 'train_CSC_fold5.csv'
+label_file: 'train_CSC_FD_fold5.csv'
 img_cols: ['StudyInstanceUID', 'Slice']
+crop_cols: []
 label_cols: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+image_dir: 'train_images'
 img_format: 'jpg'
+bbox_label: False
+use_2dot5D: True
+seq_len: null
 batch_size: 64
 image_size: 384
 num_workers: 2
@@ -17,12 +22,14 @@ model_name: 'convnext_tiny'
 num_classes: 7
 in_chans: 3
 drop_path_rate: 0.1
+use_seq_layer: False
 pretrained: True                   # True: load pretrained model (may need internet for weight downloading), False: train from scratch 
 checkpoint_path: ''                # Path to model's pretrained weights
 
 ## Training
-n_epochs: 15
-loss_fn: 'bce'
+n_epochs: 1
+loss_fn: 'weighted_bce'
+weights: [2, 1]
 optimizer: 'AdamW'
 learning_rate: 1.0e-4
 weight_decay: 1.0e-5
@@ -33,13 +40,13 @@ lr_scheduler_params: {
     'eta_min': 1.0e-6,
 }
 resume: True                       # Resume training if True
-checkpoint_dir: 'CSC_checkpoint'   # Directory to save new checkpoints
+checkpoint_dir: 'FD_checkpoint'   # Directory to save new checkpoints
 save_freq: 2                       # Number of checkpoints to save after each epoch
 debug: False                       # Get a few samples for debugging
 _metric_to_use: ['acc', 'auc']     # Metric to be used
-_metric_to_opt: 'auc'              # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
+_metric_to_opt: 'loss'              # Metric used to select and save the best checkpoint (e.g. 'loss', 'auc')
 _use_tensorboard: False            # Whether to use tensorboard for logging
 _use_wandb: True                   # Whether to use wandb for logging
-_wandb_project: 'RSNA-CSC-2022'    # Wandb's project name
+_wandb_project: 'RSNA-FD-2022'    # Wandb's project name
 _wandb_entity: 'aip490'            # Wandb's account to save experiment result
 _wandb_resume_id: null             # Resume wandb logging if specify run id (e.g. '33fp7u8d')
