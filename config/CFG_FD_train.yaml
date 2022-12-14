@@ -6,7 +6,7 @@ img_cols: ['StudyInstanceUID', 'Slice', 'vertebrae']
 crop_cols: ['x0', 'y0', 'x1', 'y1']
 label_cols: ['fractured']
 image_dir: 'train_images'
-img_format: 'jpg'
+img_format: 'dcm'
 bbox_label: False
 use_2dot5D: True
 seq_len: 24

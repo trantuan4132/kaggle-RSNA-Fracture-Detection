@@ -6,7 +6,7 @@ img_cols: ['StudyInstanceUID', 'Slice']
 crop_cols: []
 label_cols: ['x0', 'y0', 'x1', 'y1', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
 image_dir: 'train_images'
-img_format: 'jpg'
+img_format: 'dcm'
 bbox_label: True
 use_2dot5D: True
 seq_len: null
