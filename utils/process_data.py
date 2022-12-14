@@ -28,8 +28,12 @@ def parse_args():
                         help='Extract patient id with their scan in reverse order')
     parser.add_argument('--get_vert_label', action='store_true',
                         help='Extract vertebrae labels from segmentation')
+    parser.add_argument('--get_vert_bbox', action='store_true',
+                        help='Extract vertebrae bounding box annotation from segmentation')
     parser.add_argument('--get_frac_label', action='store_true',
                         help='Create fracture labels')
+    parser.add_argument('--seq_len', type=int, default=None, 
+                        help='Length of the sequence of images to be sampled for each vertebrae')
     return parser.parse_args()
 
 
@@ -54,9 +58,9 @@ def get_reverse_list(directory='train_images'):
     return reverse_lst
 
 
-def drop_data(df, df_relabel, img_col):
+def drop_data(df, relabel_df, img_col):
     """Drop data to be ignored during training"""
-    df = df.set_index(img_col).drop(df_relabel[img_col].unique()).reset_index()
+    df = df.set_index(img_col).drop(relabel_df[img_col].unique()).reset_index()
     return df
 
 
@@ -69,7 +73,7 @@ def load_nii(path):
     return ex.astype(np.uint8)
 
 
-def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations', image_dir='train_images', seg_label2idx=None, reverse_lst=[]):
+def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations', image_dir='train_images', seg_label2idx=None, vert_ratio=True, reverse_lst=[]):
     """Extract vertebrae labels from segmentation"""
     label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
     if seg_label2idx is None:
@@ -121,7 +125,7 @@ def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations',
         for idx, slice in enumerate(slice_lst):
             labels = np.zeros(7, dtype=int)
             if len(seg_labels[idx]) > 0:
-                labels[[seg_label2idx[l] for l in seg_labels[idx]]] = 1
+                labels[[seg_label2idx[l] for l in seg_labels[idx]]] = [(seg[idx]==l).sum() for l in seg_labels[idx]] if vert_ratio else 1
             seg_lst.append([uid, slice] + list(labels))
         return seg_lst
                 
@@ -133,21 +137,90 @@ def extract_vertebrae_labels_from_segmentation(segmentation_dir='segmentations',
 
     seg_df = pd.DataFrame(seg_lst, columns=["StudyInstanceUID", "Slice"] + label_cols)
     seg_df = seg_df.sort_values(by=['StudyInstanceUID', 'Slice'])
+    if vert_ratio:
+        seg_df[label_cols] = seg_df[label_cols] / seg_df.groupby('StudyInstanceUID')[label_cols].transform(max)
     return seg_df
 
 
-def create_fracture_labels(df, df_vert, img_col, label_cols):
+def extract_vertebrae_bbox_annotation(segmentation_dir='segmentations', idx2seg_label=None, seg_df=None, reverse_lst=[]):
+    label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+    if idx2seg_label is None:
+        idx2seg_label = {i: i+1 for i in range(7)}
+
+    def extract(path, reverse_lst=[]):
+        # Load segmentation data
+        seg = load_nii(path)
+
+        # Get list of slices
+        uid = os.path.basename(path)
+        uid = uid[:uid.rfind('.nii')]
+        tmp_df = seg_df.query(f"StudyInstanceUID=='{uid}'").sort_values('Slice', ascending=not uid in reverse_lst)
+        slice_lst = tmp_df['Slice'].values
+
+        # Get list of labels each slice
+        seg_labels = [np.where(label > 0)[0] for label in tmp_df[label_cols].values]
+
+        # Assign corresponding labels for each slice
+        bbox_lst = []
+        for idx, slice in enumerate(slice_lst):
+            if len(seg_labels[idx]) == 0:
+                bbox_lst.append([uid, slice, 0, 0, 0, 0, 0])
+            else:
+                rows, cols = np.where(np.isin(seg[idx], np.vectorize(idx2seg_label.get)(seg_labels[idx])))
+                bbox = np.array([cols.min(), rows.min(), cols.max()+1, rows.max()+1])
+                bbox = bbox / np.array([seg[idx].shape[1], seg[idx].shape[0]]*2)
+                # rows, cols = rows / seg[idx].shape[0], cols / seg[idx].shape[1]
+                bbox_lst.append([uid, slice, *bbox, 1])
+        return bbox_lst
+        
+    bbox_lst = Parallel(n_jobs=-1)(
+        delayed(extract)(path, reverse_lst)
+        for path in tqdm(glob.glob(f"{segmentation_dir}/*")) if path.endswith((".nii", ".nii.gz"))
+    )
+    bbox_lst = sum(bbox_lst, [])
+
+    bbox_df = pd.DataFrame(bbox_lst, columns=["StudyInstanceUID", "Slice", "x0", "y0", "x1", "y1", "vertebrae"])
+    bbox_df = bbox_df.sort_values(by=['StudyInstanceUID', 'Slice'])
+    return bbox_df
+
+
+def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
+                           label_cols=['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'],
+                           crop_cols=['x0', 'y0', 'x1', 'y1'], extra_cols=[], 
+                           vert_col='vertebrae', target_col='fractured', seq_len=24):
     """Create fracture labels from train labels and vertebrae labels"""
-    vert_label_cols = [col + '_vert' for col in label_cols]
-    df_frac = df_vert.set_index(img_col).join(df.set_index(img_col), lsuffix='_vert').reset_index()
-    df_frac[vert_label_cols] = (df_frac[vert_label_cols] > 0.5).astype('int')
-    df_frac[label_cols] = df_frac[label_cols].values * df_frac[vert_label_cols].values
-    return df_frac.loc[:, ~df_frac.columns.str.endswith('_vert')]
+    if seq_len: 
+        # Assign fracture label to each sequence of images
+
+        # Fill in default value if label columns are not part of df
+        if not set(label_cols).issubset(df.columns):
+            df[label_cols] = 0
+
+        # Get each label columns into one rows
+        df = df[img_cols[:1] + label_cols + extra_cols].melt(id_vars=img_cols[:1] + extra_cols, 
+                                                             var_name=vert_col, value_name=target_col)
+        vert_df.rename(columns={f'{col}_slices': col for col in label_cols}, inplace=True)
+        vert_df = vert_df[img_cols[:1] + crop_cols + label_cols].melt(id_vars=img_cols[:1] + crop_cols, 
+                                                                      var_name=vert_col, value_name=img_cols[1])
+        # Select only rows with number of slices >= 5
+        vert_df = vert_df[vert_df[img_cols[1]].apply(len) >= 5]
+
+        # Get new list of slices with evenly spaced index from the previous list
+        vert_df[img_cols[1]] = vert_df[img_cols[1]].apply(lambda x: np.array(x)[np.linspace(0, len(x)-1, 
+                                                                                            seq_len, dtype=int)])
+        return df.merge(vert_df, how='inner')
+    else:
+        # Assign fracture label to each image
+        vert_label_cols = [col + '_vert' for col in label_cols]
+        frac_df = vert_df.set_index(img_cols[0]).join(df.set_index(img_cols[0]), lsuffix='_vert').reset_index()
+        frac_df[vert_label_cols] = (frac_df[vert_label_cols] > 0.5).astype('int')
+        frac_df[label_cols] = frac_df[label_cols].values * frac_df[vert_label_cols].values
+        return frac_df.loc[:, ~frac_df.columns.str.endswith('_vert')]
 
 
 if __name__ == "__main__":
     args = parse_args()
-    img_col = 'StudyInstanceUID'
+    img_cols = ['StudyInstanceUID', 'Slice']
     label_cols = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
     reverse_lst = None
 
@@ -161,13 +234,13 @@ if __name__ == "__main__":
     if args.drop:
         df = pd.read_csv(args.label_path)
         print('Number of rows before dropping:', len(df))
-        df_relabel = pd.read_csv(args.relabel_path)
-        df = drop_data(df, df_relabel, img_col)
+        relabel_df = pd.read_csv(args.relabel_path)
+        df = drop_data(df, relabel_df, img_cols[0])
         print('Number of rows after dropping:', len(df))
         df.to_csv(f"{args.out_dir}/{os.path.basename(args.label_path)}", index=False)
 
     # Extract vertebrae labels from segmentation
-    if args.get_vert_label:
+    if args.get_vert_label or args.get_vert_bbox or args.get_vert_bbox_ratio:
 
         # Get list of scan in reverse order if args.get_rvs_lst is False
         if reverse_lst is None:
@@ -184,9 +257,27 @@ if __name__ == "__main__":
                                                             reverse_lst=reverse_lst)
         seg_df.to_csv(f"{args.out_dir}/train_CSC.csv", index=False)
 
+    # Extract vertebrae bounding box annotation from segmentation
+    if args.get_vert_bbox or args.get_vert_bbox_ratio:
+        bbox_df = extract_vertebrae_bbox_annotation(segmentation_dir=args.seg_dir,
+                                                    idx2seg_label={i: i+1 for i in range(7)},
+                                                    seg_df=seg_df)
+        bbox_df.to_csv(f"{args.out_dir}/train_vert_bbox.csv", index=False)
+
+    # Extract both vertebrae labels and bounding box annotation from segmentation to a single file
+    if args.get_vert_label and args.get_vert_bbox:
+        seg_df.merge(bbox_df).to_csv(f"{args.out_dir}/train_vert_bbox_ratio.csv", index=False)
+
     # Create fracture labels
     if args.get_frac_label:
         df = pd.read_csv(args.label_path)
-        df_vert = pd.read_csv(args.vert_label_path)
-        df_frac = create_fracture_labels(df, df_vert, img_col, label_cols)
-        df_frac.to_csv(f"{args.out_dir}/train_FD.csv", index=False)
+        vert_df = pd.read_pickle(args.vert_label_path) \
+                  if args.vert_label_path.endswith('.pkl') \
+                  else pd.read_csv(args.vert_label_path)
+        frac_df = create_fracture_labels(df, vert_df, img_cols=img_cols, label_cols=label_cols,
+                                         crop_cols=['x0', 'y0', 'x1', 'y1'], extra_cols=[], 
+                                         vert_col='vertebrae', target_col='fractured', seq_len=args.seq_len)
+        if args.seq_len:
+            frac_df.to_pickle(f"{args.out_dir}/vertebrae_df.pkl")
+        else:
+            frac_df.to_csv(f"{args.out_dir}/train_CSC_FD.csv", index=False)

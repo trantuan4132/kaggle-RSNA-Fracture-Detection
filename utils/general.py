@@ -1,4 +1,4 @@
-import os, glob
+import os, glob, zipfile
 import cv2
 import torch
 from tqdm import tqdm
@@ -41,6 +41,37 @@ def load_nii(path):
     ex = ex[:, ::-1, ::-1].transpose(2, 1, 0)  # align orientation with train image
     # ex = np.where(ex>0, 255, 0)
     return ex.astype(np.uint8)
+
+
+def square_bbox(x0, y0, x1, y1, low=0, high=1):
+    w, h = x1 - x0, y1 - y0
+    w_pad, h_pad = h - min(h, w), w - min(h, w)
+    return np.array([x0-w_pad//2, y0-h_pad//2, x1+w_pad//2, y1+h_pad//2]).clip(low, high)
+
+
+def load_image(image_file, to_RGB=True, crop_coord=[]):
+    """Load and convert image to RGB"""
+    if os.path.exists(os.path.dirname(image_file)):
+        if image_file[image_file.rfind('.')+1:] == 'dcm':
+            image = load_dicom(image_file)
+        else:
+            image = cv2.imread(image_file, cv2.IMREAD_UNCHANGED).astype(np.uint8)
+    elif os.path.exists(f'{os.path.dirname(image_file)}.zip'):
+        subdir = os.path.dirname(image_file)
+        with zipfile.ZipFile(f'{subdir}.zip', "r") as z:
+            buf = z.read(f"{os.path.basename(subdir)}/{os.path.basename(image_file)}")
+            np_buf = np.frombuffer(buf, np.uint8)
+            image = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
+    else:
+        raise Exception('No images found')
+    if to_RGB and (len(image.shape) < 3 or image.shape[2] < 3):
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    if len(crop_coord) >= 4:
+        # x0, y0, x1, y1 = (crop_coord[:4]/320*image.shape[0]).astype('int')
+        x0, y0, x1, y1 = (crop_coord[:4]*image.shape[0]).astype('int')
+        x0, y0, x1, y1 = square_bbox(x0, y0, x1, y1, low=0, high=image.shape[0])
+        image = image[y0: y1, x0: x1]
+    return image
 
 
 class Struct:
