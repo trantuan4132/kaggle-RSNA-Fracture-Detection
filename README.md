@@ -101,7 +101,7 @@ optional arguments:
 
 ### Inference
 
-For inference, run `inference.py` to generate prediction (inference customization can be done by modifying the configuration file):
+For inference, run `inference.py` to generate prediction on all 2019 patients (inference customization can be done by modifying the configuration file):
 
 ```
 python inference.py --CFG config/CFG_vert_bbox_ratio_infer.yaml
@@ -110,13 +110,11 @@ python inference.py --CFG config/CFG_vert_bbox_ratio_infer.yaml
 Prediction generated will saved in the `infer_vert_bbox_ratio.pkl` file at the `./output` directory
 
 
-## Stage 2:
+## Stage 2: Fracture Detection
 
 ![Stage 2](docs/Stage2.png)
 
 ### Data Preparation
-
-In this step, images used for training will be those with segmentation mask available, which come from 87 patients out of 2019 total number of patients. The labels used in this step include top left coordination `(x0, y0)` and bottom right coordination `(x1, y1)` of the bounding box that cover all vertebrae C1-C7 in each image. The top left coordination `(x0, y0)` can be extracted from segmentation mask by determining the first column from top to bottom and the first row from left to right that contain the element belong to vertebrae C1-C7, while the bottom right coordination `(x1, y1)` can be determined in the similar way except for using the last column and row instead of the first one. The labels also include the ratio of each vertebrae in each image by counting the number of elements belong to each vertebrae in the segmentation mask, then divide by the maximum number of elements belong to each vertebrae in all images of each patient.
 
 To prepare the label file, run `utils/preprocess_data.py --image_dir dataset/train_images --label_path dataset/train.csv --vert_label_path output/infer_vert_bbox_ratio.pkl --get_frac_label --seq_len 24` and the label file `vertebrae_df.pkl` will be generated in the `./output` directory
 
