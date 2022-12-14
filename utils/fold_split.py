@@ -15,7 +15,7 @@ def parse_args():
                         help='Whether label is multilabel or multiclass')
     parser.add_argument('--kfold', type=int, default=5,
                         help='Number of folds')
-    parser.add_argument('--save_path', type=str, default='train_fold5.csv',
+    parser.add_argument('--save_path', type=str, default=None,
                         help='Path to the save file')
     return parser.parse_args()
 
@@ -62,7 +62,10 @@ def main():
     groups = df['StudyInstanceUID']
 
     df = fold_split(df, args.kfold, y=y, groups=groups)
-    # save_path = args.label_path.replace('.csv', f'_fold{args.kfold}.csv')
+    if not args.save_path:
+        args.save_path = args.label_path.replace('.pkl', f'_fold{args.kfold}.pkl') \
+                         if args.label_path.endswith('.pkl') \
+                         else args.label_path.replace('.csv', f'_fold{args.kfold}.csv')
     df.to_pickle(args.save_path) if args.label_path.endswith('.pkl') else df.to_csv(args.save_path, index=False)
     print(df)
 
