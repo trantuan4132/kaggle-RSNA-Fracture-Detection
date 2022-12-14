@@ -20,7 +20,7 @@ def parse_args():
                         help='Path to the vertebrae label file')
     parser.add_argument('--seg_dir', type=str, default='segmentations',
                         help='Path to the segmentation directory')
-    parser.add_argument('--out_dir', type=str, default='.',
+    parser.add_argument('--out_dir', type=str, default='output',
                         help='Path to the output directory')                    
     parser.add_argument('--drop', action='store_true',
                         help='Drop the image id contained in the relabel file')
