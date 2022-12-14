@@ -287,7 +287,7 @@ def run(fold, config):
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--CFG', type=str, default='config/CFG_FD.yaml', 
+    parser.add_argument('--CFG', type=str, default='config/CFG_FD_train.yaml', 
                         help='Path to the configuration file')
     parser.add_argument('--fold', type=str, default='all', 
                         help="0 ⟶ (kfold-1): train 1 fold only, 'all': train all folds sequentially")
