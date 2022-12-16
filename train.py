@@ -142,9 +142,9 @@ def valid_one_epoch(model, loader, criterion, config):
 
 def run(fold, config):
     # Prepare train and val set
-    full_train_df = pd.read_pickle(f'{config.input_dir}/{config.label_file}') \
+    full_train_df = pd.read_pickle(config.label_file) \
                     if config.label_file.endswith('.pkl') \
-                    else pd.read_csv(f'{config.input_dir}/{config.label_file}')
+                    else pd.read_csv(config.label_file)
     train_df = full_train_df.query(f"fold!={fold}")
     val_df = full_train_df.query(f"fold=={fold}")
 
@@ -159,12 +159,12 @@ def run(fold, config):
     train_transform = build_transform(config.image_size, is_train=True, include_top=True, **kwargs)
     val_transform = build_transform(config.image_size, is_train=False, include_top=True, **kwargs)
     
-    train_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/{config.image_dir}", df=train_df, 
+    train_dataset = RSNAClassificationDataset(image_dir=config.image_dir, df=train_df, 
                                               img_cols=config.img_cols, label_cols=config.label_cols,
                                               img_format=config.img_format, bbox_label=config.bbox_label, 
                                               transform=train_transform, use_2dot5D=config.use_2dot5D, 
                                               overlap=True, seq_len=config.seq_len, crop_cols=config.crop_cols)
-    val_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/{config.image_dir}", df=val_df,
+    val_dataset = RSNAClassificationDataset(image_dir=config.image_dir, df=val_df,
                                             img_cols=config.img_cols, label_cols=config.label_cols,
                                             img_format=config.img_format, bbox_label=config.bbox_label, 
                                             transform=val_transform, use_2dot5D=config.use_2dot5D, 
@@ -298,7 +298,7 @@ def main():
         config = Struct(**yaml.safe_load(stream))
     set_seed(config.seed)
     if os.path.exists('/kaggle/input'):
-        config.input_dir = '../input/rsna-2022-cervical-spine-fracture-detection'
+        config.image_dir = '../input/rsna-2022-cervical-spine-fracture-detection/' + os.path.basename(config.image_dir)
     if os.path.exists('/content/drive/MyDrive') and not config.checkpoint_dir.startswith(('/content/drive', 'drive')):
         config.checkpoint_dir = os.path.join('/content/drive/MyDrive/rsna-checkpoint', config.checkpoint_dir, 
                                             f'{config.model_name}-{config.image_size}')

@@ -1,11 +1,10 @@
 ## Dataset
-input_dir: 'dataset'
 kfold: 5
-label_file: 'train_CSC_fold5.csv'
+label_file: 'output/train_CSC_fold5.csv'
 img_cols: ['StudyInstanceUID', 'Slice']
 crop_cols: []
 label_cols: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
-image_dir: 'train_images'
+image_dir: 'dataset/train_images'
 img_format: 'dcm'
 bbox_label: False
 use_2dot5D: True

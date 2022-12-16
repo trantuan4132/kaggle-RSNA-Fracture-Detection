@@ -1,10 +1,9 @@
 ## Dataset
-input_dir: 'dataset'
-label_file: 'train.csv'
+label_file: 'dataset/train.csv'
 img_cols: ['StudyInstanceUID', 'Slice']
 label_cols: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
 crop_cols: []
-image_dir: 'train_images'
+image_dir: 'dataset/train_images'
 img_format: 'dcm'
 bbox_label: False
 vert_ratio: False
@@ -15,7 +14,7 @@ image_size: 384
 num_workers: 2
 pin_memory: True
 seed: 42
-out_file: 'train_CSC_full.csv'
+out_file: 'output/train_CSC_full.csv'
 
 ## Model
 in_chans: 3

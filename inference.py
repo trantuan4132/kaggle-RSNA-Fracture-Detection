@@ -80,13 +80,11 @@ def ensemble(models, test_loader, config):
 
 
 def predict_all(config, test_df=None):
-    if os.path.exists('/kaggle/input'):
-        config.input_dir = '../input/rsna-2022-cervical-spine-fracture-detection'
     # Load data
     if test_df is None:
-        test_df = pd.read_pickle(f'{config.input_dir}/{config.label_file}') \
+        test_df = pd.read_pickle(config.label_file) \
                   if config.label_file.endswith('.pkl') \
-                  else pd.read_csv(f'{config.input_dir}/{config.label_file}')
+                  else pd.read_csv(config.label_file)
     test_df.drop(config.label_cols, axis=1, errors='ignore', inplace=True)
     # test_df = test_df.query(f"StudyInstanceUID=='1.2.826.0.1.3680043.6200'")
 
@@ -98,7 +96,7 @@ def predict_all(config, test_df=None):
         kwargs['bbox_params'] = A.BboxParams(format='albumentations', label_fields=['class_labels'])
 
     test_trainsform = build_transform(config.image_size, is_train=False, include_top=True, **kwargs)
-    test_dataset = RSNAClassificationDataset(image_dir=f"{config.input_dir}/{config.image_dir}", df=test_df,
+    test_dataset = RSNAClassificationDataset(image_dir=config.image_dir, df=test_df,
                                              img_cols=config.img_cols, label_cols=config.label_cols,
                                              img_format=config.img_format, bbox_label=config.bbox_label, 
                                              transform=test_trainsform, use_2dot5D=config.use_2dot5D, 
@@ -155,7 +153,7 @@ def load_config(fname):
         with open(fname, mode='r') as stream:
             config = Struct(**yaml.safe_load(stream))
         if os.path.exists('/kaggle/input'):
-            config.input_dir = '../input/rsna-2022-cervical-spine-fracture-detection'
+            config.image_dir = '../input/rsna-2022-cervical-spine-fracture-detection/' + os.path.basename(config.image_dir)
         config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         config.num_classes = len(config.label_cols)
     config.name = os.path.basename(fname).replace('.yaml', '').replace('_infer', '')
@@ -181,7 +179,7 @@ def main():
             load_config('config/CFG_vert_bbox_ratio_infer.yaml'),
             load_config('config/CFG_FD_infer.yaml')
         ]
-        df = pd.read_csv(f'{configs[0].input_dir}/test.csv')
+        df = pd.read_csv('../input/rsna-2022-cervical-spine-fracture-detection/test.csv')
         # Fix inconsistency between test_images and test.csv
         if df.iloc[0].row_id == '1.2.826.0.1.3680043.10197_C1':
             df = pd.DataFrame({
