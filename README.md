@@ -224,23 +224,23 @@ For inference, use `inference.py` to generate prediction (inference customizatio
 python inference.py --CFG config/CFG_FD_infer.yaml
 ```
 
-## Results
-
-<center>
-
-|   CV   | Public LB | Private LB |
-|:------:|:---------:|:----------:|
-| 0.3668 |  0.3318   |   0.3691   |
-
-</center>
-
-The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and fold 1, 2, 3 in stage 2 with the submission time of nearly 9 hours (could not ensemble more due to time limit). Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
-
 **Note:** An alternative to run all the commands provided is to run the `train.sh` file
 
 ```
 sh train.sh
 ```
+
+## Results
+
+<div align="center">
+
+|   CV   | Public LB | Private LB |
+|:------:|:---------:|:----------:|
+| 0.3668 |  0.3318   |   0.3691   |
+
+</div>
+
+The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and fold 1, 2, 3 in stage 2 with the submission time of nearly 9 hours (could not ensemble more due to time limit). Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
 
 ## Demo
 
