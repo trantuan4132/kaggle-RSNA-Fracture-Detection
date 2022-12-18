@@ -230,9 +230,11 @@ python inference.py --CFG config/CFG_FD_infer.yaml
 sh train.sh
 ```
 
-<!-- ## Demo
+## Demo
 
-Run `utils/cam_vis.py` to demo classification result with GradCAM:
+<video src="docs/demo.mp4"></video>
+
+<!-- Run `utils/cam_vis.py` to demo classification result with GradCAM:
 
 ```
 python utils/cam_vis.py
