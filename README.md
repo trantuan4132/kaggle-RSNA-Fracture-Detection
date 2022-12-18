@@ -232,11 +232,7 @@ sh train.sh
 
 ## Demo
 
-<!-- <video src="https://github.com/trantuan4132/kaggle-RSNA-Fracture-Detection/raw/master/docs/demo.mp4"></video> -->
-
-<video controls="" width="1000" height="500" muted="" loop="" autoplay="">
-<source src="https://github.com/trantuan4132/kaggle-RSNA-Fracture-Detection/raw/master/docs/demo.mp4" type="video/mp4">
-</video>
+https://user-images.githubusercontent.com/65863754/208296029-7f59db4a-13c3-47ce-8ce3-c407897ecb44.mp4
 
 <!-- Run `utils/cam_vis.py` to demo classification result with GradCAM:
 
