@@ -67,10 +67,11 @@ In this step, images used for training will be those with segmentation mask avai
 In summary, each row in the label file contains:
 
 ```math
-x0 = \min_{N_i > 0} i \\
-y0 = \min_{N_j > 0} j \\
-x1 = \max_{N_i > 0} i \\
-y1 = \max_{N_j > 0} j
+\begin{matrix}
+  x0 = \min_{N_i > 0} i \\
+  y0 = \min_{N_j > 0} j \\
+  x1 = \max_{N_i > 0} i \\
+  y1 = \max_{N_j > 0} j
 \end{matrix}
 \left\{
   \begin{matrix}
@@ -84,7 +85,8 @@ y1 = \max_{N_j > 0} j
 \right.
 ```
 
-```math 
+```math
+R^k_{Ci} = \frac{N^k_{Ci}}{\max(N^1_{Ci}, N^2_{Ci}, ..., N^T_{Ci})} 
 \left\{
   \begin{matrix}
     \begin{aligned}
