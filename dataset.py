@@ -63,9 +63,9 @@ class RSNAClassificationDataset(Dataset):
         def is_start_pos(x, overlap=True, seq_len=1):
             stride = 1 if seq_len <= 3 else max(1, seq_len//8)
             start_ids = np.array([True] * (len(x)-seq_len+1) + [False]*(seq_len-1))
-            start_ids[:len(x)-seq_len] = np.arange(0, len(x)-seq_len) % stride
+            start_ids[:len(x)-seq_len] = np.arange(0, len(x)-seq_len) % stride == 0
             if not overlap:
-                start_ids[:len(x)-seq_len] = np.arange(0, len(x)-seq_len) % seq_len #np.array([True,False,False] * len(x))[:len(x)-2] + [False]*2)
+                start_ids[:len(x)-seq_len] = np.arange(0, len(x)-seq_len) % seq_len == 0 #np.array([True,False,False] * len(x))[:len(x)-2] + [False]*2)
             return start_ids
 
         self.start_ids = self.df.groupby(img_cols[0:3:2])[img_cols[1]].transform(is_start_pos, overlap=self.overlap, 
