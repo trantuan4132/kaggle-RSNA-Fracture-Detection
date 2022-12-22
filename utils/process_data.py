@@ -202,7 +202,7 @@ def window_range(rows, label_col='vertebrae', window=5, min_periods=3, center=Tr
 def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
                            label_cols=['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'],
                            crop_cols=['x0', 'y0', 'x1', 'y1'], extra_cols=[], 
-                           vert_col='vertebrae', target_col='fractured', seq_len=24):
+                           vert_col='vertebrae', target_col='fractured', vert_thresh=0.5, seq_len=24):
     """Create fracture labels from train labels and vertebrae labels"""
     if seq_len: 
         # Assign fracture label to each sequence of images
@@ -216,9 +216,9 @@ def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
                                                              var_name=vert_col, value_name=target_col)
 
         # Get bounding box coordination and a sequence of slices for each vertebrae in each study
-        slice_range_dfs = [vert_df.groupby(img_cols[0]).apply(window_range, label_col=col, thresh=0.5, all_slices=True) for col in label_cols]
-        vert_df = vert_df[(vert_df[label_cols] > 0.5).any(axis=1)].groupby(img_cols[0])[crop_cols[0:2]].min().join([
-            vert_df[(vert_df[label_cols] > 0.5).any(axis=1)].groupby(img_cols[0])[crop_cols[2:4]].max(),
+        slice_range_dfs = [vert_df.groupby(img_cols[0]).apply(window_range, label_col=col, thresh=vert_thresh, all_slices=True) for col in label_cols]
+        vert_df = vert_df[(vert_df[label_cols] > vert_thresh).any(axis=1)].groupby(img_cols[0])[crop_cols[0:2]].min().join([
+            vert_df[(vert_df[label_cols] > vert_thresh).any(axis=1)].groupby(img_cols[0])[crop_cols[2:4]].max(),
             *[pd.DataFrame(np.expand_dims(slice_range_dfs[i], 1).tolist(), columns=[f'{col}'], 
                             index=slice_range_dfs[i].index) for i, col in enumerate(label_cols)],
             vert_df.groupby(img_cols[0])[img_cols[1]].max().rename('max_slice')
