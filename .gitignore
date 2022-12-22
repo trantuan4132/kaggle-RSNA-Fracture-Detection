@@ -130,6 +130,7 @@ dmypy.json
 
 # others
 dataset
+output
 *checkpoint
 segmentations
 train_images
@@ -140,7 +141,6 @@ test.csv
 sample_submission.csv
 *_fold5.csv
 # reverse_list.txt
-# train_segmented.csv
 *.pth
 log
 utils/cam_vis.py
