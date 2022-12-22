@@ -126,14 +126,15 @@ def predict_all(config, test_df=None):
     elif config.name == 'CFG_vert_bbox_ratio':
         pred_df.fillna(method='ffill', inplace=True)
         # pred_df.to_csv('test.csv', index=False)
-        slice_range_dfs = [pred_df.groupby(config.img_cols[0]).apply(window_range, label_col=label_col, thresh=0.5, all_slices=True) for label_col in config.label_cols[4:]]
-        test_df = pred_df[(pred_df[config.label_cols[4:]] > 0.5).any(axis=1)].groupby(config.img_cols[0])[config.label_cols[0:2]].min().join([
-            pred_df[(pred_df[config.label_cols[4:]] > 0.5).any(axis=1)].groupby(config.img_cols[0])[config.label_cols[2:4]].max(),
-            *[pd.DataFrame(np.expand_dims(slice_range_dfs[i], 1).tolist(), columns=[f'{label_col}_slices'], 
-                           index=slice_range_dfs[i].index) for i, label_col in enumerate(config.label_cols[4:])],
-            pred_df.groupby(config.img_cols[0])[config.img_cols[1]].max().rename('max_slice')
-        ]).reset_index()
-        test_df.to_pickle(config.out_file) if config.label_file.endswith('.pkl') else test_df.to_csv(config.out_file, index=False)
+        test_df = pred_df.copy()
+        # slice_range_dfs = [pred_df.groupby(config.img_cols[0]).apply(window_range, label_col=label_col, thresh=0.5, all_slices=True) for label_col in config.label_cols[4:]]
+        # test_df = pred_df[(pred_df[config.label_cols[4:]] > 0.5).any(axis=1)].groupby(config.img_cols[0])[config.label_cols[0:2]].min().join([
+        #     pred_df[(pred_df[config.label_cols[4:]] > 0.5).any(axis=1)].groupby(config.img_cols[0])[config.label_cols[2:4]].max(),
+        #     *[pd.DataFrame(np.expand_dims(slice_range_dfs[i], 1).tolist(), columns=[f'{label_col}_slices'], 
+        #                    index=slice_range_dfs[i].index) for i, label_col in enumerate(config.label_cols[4:])],
+        #     pred_df.groupby(config.img_cols[0])[config.img_cols[1]].max().rename('max_slice')
+        # ]).reset_index()
+        test_df.to_pickle(config.out_file) if config.out_file.endswith('.pkl') else test_df.to_csv(config.out_file, index=False)
     elif config.name == 'CFG_FD':
         pred_df.fillna(method='ffill', inplace=True)
         print(pred_df)
@@ -143,6 +144,7 @@ def predict_all(config, test_df=None):
         # test_df = test_df.groupby(config.img_cols[0]).apply(lambda df: patient_prediction(df)).reset_index()
         test_df['patient_overall'] = test_df.apply(lambda x: 1 - np.prod(1 - x[['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']] \
                                                                          .sort_values(ascending=False)[:]), axis=1)
+        test_df.to_pickle(config.out_file) if config.out_file.endswith('.pkl') else test_df.to_csv(config.out_file, index=False)
     return test_df
 
 
@@ -165,13 +167,22 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--CFG', type=str, default='config/CFG_FD_infer.yaml', 
                         help='Path to the configuration file')
+    parser.add_argument('--label_file', type=str, default=None, 
+                        help="Path to the label file")
     parser.add_argument('--image_dir', type=str, default=None, 
                         help="Path to the image directory")
+    parser.add_argument('--image_format', type=str, default=None, 
+                        help="The extension of image file")
+    parser.add_argument('--out_file', type=str, default=None, 
+                        help="Path to the output file")
     args = parser.parse_args()
 
     # Load configuration from file
     config = load_config(args.CFG)
+    if args.label_file: config.label_file = args.label_file
     if args.image_dir: config.image_dir = args.image_dir
+    if args.image_format: config.img_format = args.image_format
+    if args.out_file: config.out_file = args.out_file
     
     # Generate prediction
     if config.name == 'CFG_vert_bbox_ratio_FD':
