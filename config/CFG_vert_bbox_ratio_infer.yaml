@@ -23,9 +23,11 @@ drop_path_rate: 0.1
 use_seq_layer: False
 pretrained: False                       # True: load pretrained model, False: train from scratch
 checkpoint_path: ''                    # Path to model's pretrained weights
-checkpoint_dirs: {'convnext_tiny': ['vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=0-best.pth',
-                                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=1-best.pth',
-                                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=2-best.pth',
-                                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=3-best.pth',
-                                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=4-best.pth']}
+checkpoint_dirs: {'convnext_tiny': [
+                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=0-best.pth',
+                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=1-best.pth',
+                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=2-best.pth',
+                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=3-best.pth',
+                    'vert_bbox_ratio_checkpoint/convnext_tiny-384/fold=4-best.pth'
+                  ]}
 debug: False
