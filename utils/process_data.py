@@ -21,7 +21,9 @@ def parse_args():
     parser.add_argument('--seg_dir', type=str, default='segmentations',
                         help='Path to the segmentation directory')
     parser.add_argument('--out_dir', type=str, default='output',
-                        help='Path to the output directory')                    
+                        help='Path to the output directory')
+    parser.add_argument('--out_file', type=str, default=None,
+                        help='Name of the output file, default output file is used if it is not specified')                      
     parser.add_argument('--drop', action='store_true',
                         help='Drop the image id contained in the relabel file')
     parser.add_argument('--get_rvs_lst', action='store_true',
@@ -184,6 +186,19 @@ def extract_vertebrae_bbox_annotation(segmentation_dir='segmentations', idx2seg_
     return bbox_df
 
 
+def window_range(rows, label_col='vertebrae', window=5, min_periods=3, center=True, thresh=0.1, all_slices=False):
+    vert_probs = rows[label_col].rolling(window, min_periods=min_periods, center=center).mean()
+    # vert_probs.plot()
+    vert_range = np.where(vert_probs > thresh)[0]
+    if all_slices:
+        return rows['Slice'].iloc[vert_range].tolist()
+    if len(vert_range) == 0:
+        return rows['Slice'].iloc[[0,-1]]
+    start_slice = rows['Slice'].iloc[vert_range[0]]
+    end_slice = rows['Slice'].iloc[vert_range[-1]]
+    return [start_slice, end_slice]
+
+
 def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
                            label_cols=['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'],
                            crop_cols=['x0', 'y0', 'x1', 'y1'], extra_cols=[], 
@@ -199,7 +214,16 @@ def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
         # Get each label columns into one rows
         df = df[img_cols[:1] + label_cols + extra_cols].melt(id_vars=img_cols[:1] + extra_cols, 
                                                              var_name=vert_col, value_name=target_col)
-        vert_df.rename(columns={f'{col}_slices': col for col in label_cols}, inplace=True)
+
+        # Get bounding box coordination and a sequence of slices for each vertebrae in each study
+        slice_range_dfs = [vert_df.groupby(img_cols[0]).apply(window_range, label_col=col, thresh=0.5, all_slices=True) for col in label_cols]
+        vert_df = vert_df[(vert_df[label_cols] > 0.5).any(axis=1)].groupby(img_cols[0])[crop_cols[0:2]].min().join([
+            vert_df[(vert_df[label_cols] > 0.5).any(axis=1)].groupby(img_cols[0])[crop_cols[2:4]].max(),
+            *[pd.DataFrame(np.expand_dims(slice_range_dfs[i], 1).tolist(), columns=[f'{col}'], 
+                            index=slice_range_dfs[i].index) for i, col in enumerate(label_cols)],
+            vert_df.groupby(img_cols[0])[img_cols[1]].max().rename('max_slice')
+        ]).reset_index()                                                 
+        # vert_df.rename(columns={f'{col}_slices': col for col in label_cols}, inplace=True)
         vert_df = vert_df[img_cols[:1] + crop_cols + label_cols].melt(id_vars=img_cols[:1] + crop_cols, 
                                                                       var_name=vert_col, value_name=img_cols[1])
         # Select only rows with number of slices >= 5
@@ -227,7 +251,8 @@ if __name__ == "__main__":
     # Get list of scan in reverse order
     if args.get_rvs_lst:
         reverse_lst = get_reverse_list(args.image_dir)
-        with open(f"{args.out_dir}/reverse_list.txt", 'w') as f:
+        if not args.out_file: args.out_file = "reverse_list.txt" 
+        with open(f"{args.out_dir}/{args.out_file}", 'w') as f:
             f.write("\n".join(sorted(reverse_lst)))
     
     # Drop data to be ignored during training
@@ -237,10 +262,11 @@ if __name__ == "__main__":
         relabel_df = pd.read_csv(args.relabel_path)
         df = drop_data(df, relabel_df, img_cols[0])
         print('Number of rows after dropping:', len(df))
-        df.to_csv(f"{args.out_dir}/{os.path.basename(args.label_path)}", index=False)
+        if not args.out_file: args.out_file = os.path.basename(args.label_path)
+        df.to_csv(f"{args.out_dir}/{args.out_file}", index=False)
 
     # Extract vertebrae labels from segmentation
-    if args.get_vert_label or args.get_vert_bbox or args.get_vert_bbox_ratio:
+    if args.get_vert_label or args.get_vert_bbox:
 
         # Get list of scan in reverse order if args.get_rvs_lst is False
         if reverse_lst is None:
@@ -255,18 +281,21 @@ if __name__ == "__main__":
                                                             image_dir=args.image_dir,
                                                             seg_label2idx={i+1: i for i in range(7)}, # {41-i: i for i in range(7)}
                                                             reverse_lst=reverse_lst)
-        seg_df.to_csv(f"{args.out_dir}/train_CSC.csv", index=False)
+        if not args.out_file: args.out_file = "train_CSC.csv" 
+        seg_df.to_csv(f"{args.out_dir}/{args.out_file}", index=False)
 
     # Extract vertebrae bounding box annotation from segmentation
-    if args.get_vert_bbox or args.get_vert_bbox_ratio:
+    if args.get_vert_bbox:
         bbox_df = extract_vertebrae_bbox_annotation(segmentation_dir=args.seg_dir,
                                                     idx2seg_label={i: i+1 for i in range(7)},
                                                     seg_df=seg_df)
-        bbox_df.to_csv(f"{args.out_dir}/train_vert_bbox.csv", index=False)
+        if not args.out_file: args.out_file = "train_vert_bbox.csv"                                             
+        bbox_df.to_csv(f"{args.out_dir}/{args.out_file}", index=False)
 
     # Extract both vertebrae labels and bounding box annotation from segmentation to a single file
     if args.get_vert_label and args.get_vert_bbox:
-        seg_df.merge(bbox_df).to_csv(f"{args.out_dir}/train_vert_bbox_ratio.csv", index=False)
+        if not args.out_file: args.out_file = "train_vert_bbox_ratio.csv" 
+        seg_df.merge(bbox_df).to_csv(f"{args.out_dir}/{args.out_file}", index=False)
 
     # Create fracture labels
     if args.get_frac_label:
@@ -277,7 +306,12 @@ if __name__ == "__main__":
         frac_df = create_fracture_labels(df, vert_df, img_cols=img_cols, label_cols=label_cols,
                                          crop_cols=['x0', 'y0', 'x1', 'y1'], extra_cols=[], 
                                          vert_col='vertebrae', target_col='fractured', seq_len=args.seq_len)
-        if args.seq_len:
-            frac_df.to_pickle(f"{args.out_dir}/vertebrae_df.pkl")
-        else:
-            frac_df.to_csv(f"{args.out_dir}/train_CSC_FD.csv", index=False)
+        if not args.out_file: 
+            if args.seq_len:
+                args.out_file = "vertebrae_df.pkl" 
+            else:
+                args.out_file = "train_CSC_FD.csv" 
+                
+        frac_df.to_pickle(f"{args.out_dir}/{args.out_file}") \
+        if args.out_file.endswith('.pkl') \
+        else frac_df.to_csv(f"{args.out_dir}/{args.out_file}", index=False)
