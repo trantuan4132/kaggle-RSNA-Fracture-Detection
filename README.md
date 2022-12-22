@@ -65,7 +65,8 @@ dataset
 In this step, images used for training will be those with segmentation mask available, which come from 87 patients out of 2019 total number of patients. The labels used in this step include top left coordination `(x0, y0)` and bottom right coordination `(x1, y1)` of the bounding box that cover all vertebrae C1-C7 in each image. The top left coordination `(x0, y0)` can be extracted from segmentation mask by determining the first column from top to bottom and the first row from left to right that contain the element belong to vertebrae C1-C7, while the bottom right coordination `(x1, y1)` can be determined in the similar way except for using the last column and row instead of the first one. The labels also include the ratio of each vertebrae in each image by counting the number of elements belong to each vertebrae in the segmentation mask, then divide by the maximum number of elements belong to each vertebrae in all images of each patient.
 
 In summary, each row in the label file contains:
-- $\begin{matrix}
+
+- <img src="https://latex.codecogs.com/gif.latex?%5Cbg_white \begin{matrix}
 x0 = \min_{N_i > 0} i \\
 y0 = \min_{N_j > 0} j \\
 x1 = \max_{N_i > 0} i \\
@@ -80,8 +81,9 @@ y1 = \max_{N_j > 0} j
       &x1, y1: \text{bottom right coordination of the bounding box}
     \end{aligned}
   \end{matrix}
-\right.$
-- $R^k_{Ci} = \frac{N^k_{Ci}}{\max(N^1_{Ci}, N^2_{Ci}, ..., N^T_{Ci})} 
+\right." />
+
+- <img src="https://latex.codecogs.com/gif.latex?%5Cbg_white R^k_{Ci} = \frac{N^k_{Ci}}{\max(N^1_{Ci}, N^2_{Ci}, ..., N^T_{Ci})} 
 \left\{
   \begin{matrix}
     \begin{aligned}
@@ -92,7 +94,7 @@ y1 = \max_{N_j > 0} j
       &R^k_{Ci}: \text{ratio of each vertebrae } Ci \text{ in the } k^{th} \text{ slice }
     \end{aligned}
   \end{matrix}
-\right.$
+\right." />
 
 To prepare the label file, run `python utils/preprocess_data.py --image_dir dataset/train_images --label_path dataset/train.csv --seg_dir dataset/segmentations --get_vert_label --get_vert_bbox` and the label file `train_vert_bbox_ratio.csv` will be generated in the `./output` directory
 
@@ -174,7 +176,7 @@ For inference, use `inference.py` to generate prediction on all 2019 patients us
 python inference.py --CFG config/CFG_vert_bbox_ratio_infer.yaml
 ```
 
-The prediction generated on each slice will be further processed by determining only one bounding box for each study by getting the minimum of `x0`, `y0` and the maximum of `x1`, `y1` across all slices with the ratio of any vertebrae larger than 0.5 in each study. Moreover, for each vertebrae in a study, gather all slices in that study in which the ratio of that vertebrae is larger than 0.5 into a single list. After that, the final prediction will have a unique study id in each row along with a bounding box's top left and bottom right coordination, and each vertebrae in each column with a list of slices belonging to it as value. The final prediction will be saved in the `infer_vert_bbox_ratio.pkl` file in the `./output` directory.
+The final prediction will be saved in the `infer_vert_bbox_ratio.pkl` file in the `./output` directory.
 
 
 ## Stage 2: Fracture Detection
@@ -183,7 +185,27 @@ The prediction generated on each slice will be further processed by determining 
 
 ### Data Preparation
 
-In this stage, the images used for training come from all of the 2019 studies except for a study with the id `1.2.826.0.1.3680043.20574` since this study does not contain any slices belonging to C1-C7. Each fracture label from `train.csv` will then be assigned to a list of slices belonging to each vertebrae in each study and a fixed number of slices (i.e. 24) will be chosen from that list of slices using evenly spaced indices (e.g. 47 slices -> 24 slices with index 0, 2, 4, ..., 46).
+In this stage, the prediction generated on each slice in the `infer_vert_bbox_ratio.pkl` file will be further processed by determining only one bounding box for each study by getting the minimum of `x0`, `y0` and the maximum of `x1`, `y1` across all slices with the ratio of any vertebrae larger than a ratio threshold (i.e. 0.5) in each study. Moreover, for each vertebrae in a study, gather all slices in that study in which the ratio of that vertebrae is larger than the ratio threshold into a single list. After that, the processed prediction will have a unique study id in each row along with a bounding box's top left and bottom right coordination, and each vertebrae in each column with a list of slices belonging to it as value. Finally, to generate the label file for this stage, each fracture label from `train.csv` will then be assigned to a list of slices belonging to each vertebrae in each study in the processed prediction and a fixed number of slices (i.e. 24) will be chosen from that list of slices using evenly spaced indices (e.g. 47 slices -> 24 slices with index 0, 2, 4, ..., 46). If a list of slices has less than a certain number of slices (i.e. 5), the row with that list of slices in the label file will be removed. The format of the label file will be as follow:
+
+<div align="center">
+
+|       |      StudyInstanceUID     | vertebrae | fractured |    x0    |    y0    |    x1    |    y1    |                       Slice                       |
+|:-----:|:-------------------------:|:---------:|:---------:|:--------:|:--------:|:--------:|:--------:|:-------------------------------------------------:|
+|   0   |  1.2.826.0.1.3680043.6200 |     C1    |     1     | 0.363999 | 0.244340 | 0.719682 | 0.620525 | [46, 47, 48, 50, 51, 53, 54, 56, 57, 58, 60, 6... |
+|   1   | 1.2.826.0.1.3680043.27262 |     C1    |     0     | 0.252436 | 0.063375 | 0.758507 | 0.549605 | [280, 282, 285, 287, 290, 293, 295, 298, 301, ... |
+|   2   | 1.2.826.0.1.3680043.21561 |     C1    |     0     | 0.131206 | 0.101928 | 0.784815 | 0.642016 | [68, 69, 70, 72, 73, 75, 76, 78, 79, 80, 82, 8... |
+|   3   | 1.2.826.0.1.3680043.12351 |     C1    |     0     | 0.157190 | 0.271913 | 0.865044 | 0.849934 | [119, 121, 123, 126, 128, 131, 133, 136, 138, ... |
+|   4   |  1.2.826.0.1.3680043.1363 |     C1    |     0     | 0.380879 | 0.437955 | 0.637452 | 0.800634 | [146, 147, 148, 149, 150, 151, 152, 153, 154, ... |
+|  ...  |            ...            |    ...    |    ...    |    ...   |    ...   |    ...   |    ...   |                        ...                        |
+| 14121 | 1.2.826.0.1.3680043.21684 |     C7    |     1     | 0.237653 | 0.316709 | 0.647431 | 0.712752 | [137, 139, 141, 143, 145, 148, 150, 152, 154, ... |
+| 14122 |  1.2.826.0.1.3680043.4786 |     C7    |     1     | 0.173104 | 0.116852 | 0.800401 | 0.731300 | [205, 208, 212, 215, 219, 222, 226, 229, 233, ... |
+| 14123 | 1.2.826.0.1.3680043.14341 |     C7    |     0     | 0.201792 | 0.395122 | 0.664324 | 0.878141 | [227, 229, 231, 234, 236, 239, 241, 244, 246, ... |
+| 14124 | 1.2.826.0.1.3680043.12053 |     C7    |     0     | 0.175415 | 0.068272 | 0.842671 | 0.646332 | [199, 200, 202, 203, 205, 207, 208, 210, 211, ... |
+| 14125 | 1.2.826.0.1.3680043.18786 |     C7    |     1     | 0.177036 | 0.207925 | 0.726030 | 0.623192 | [329, 331, 333, 336, 338, 341, 343, 346, 348, ... |
+
+</div>
+
+The images used for training come from all of the 2019 studies except for a study with the id `1.2.826.0.1.3680043.20574` since this study does not contain any slices belonging to C1-C7. 
 
 To prepare the label file, run `python utils/preprocess_data.py --image_dir dataset/train_images --label_path dataset/train.csv --vert_label_path output/infer_vert_bbox_ratio.pkl --get_frac_label --seq_len 24` and the label file `vertebrae_df.pkl` will be generated in the `./output` directory
 
@@ -224,7 +246,9 @@ For inference, use `inference.py` to generate prediction (inference customizatio
 python inference.py --CFG config/CFG_FD_infer.yaml
 ```
 
-**Note:** An alternative to run all the commands provided is to run the `train.sh` file
+To get the submission file used for the competition, pass  `---CFG config/CFG_vert_bbox_ratio_FD_infer.yaml` to the command to run both stages with `test.csv` as the input file and `test_images` as the image directory.
+
+**Note:** An alternative to run all the commands provided is to run the `train.sh` file.
 
 ```
 sh train.sh
