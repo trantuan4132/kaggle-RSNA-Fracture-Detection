@@ -6,6 +6,7 @@ import timm
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
+import re
 
 from dataset import *
 from model import RSNAClassifier
@@ -148,6 +149,24 @@ def predict_all(config, test_df=None):
     return test_df
 
 
+def predict_oof(config, kfold=5):
+    checkpoint_dirs = config.checkpoint_dirs.copy()
+    oof_dfs = []
+    for fold in range(kfold):
+        # Load data
+        df = pd.read_pickle(config.label_file)
+        df = df.query(f'fold=={fold}')
+
+        # Predict OOF
+        config.checkpoint_dirs = {model_name: [f for f in ckpt_dirs if int(re.search('fold=(\d+)', f).group(1)) == fold]
+                                for model_name, ckpt_dirs in config.checkpoint_dirs.items()}
+        oof_dfs.append(predict_all(config=config, test_df=df))
+        config.checkpoint_dirs = checkpoint_dirs.copy()
+    oof_df = pd.concat(oof_dfs, ignore_index=True)
+    oof_df.to_csv(config.out_file, index=False)  # 'output/oof.csv'
+    return oof_df
+
+
 def load_config(fname):
     """Load configuration from file"""
     config = lambda: None
@@ -175,6 +194,8 @@ def main():
                         help="The extension of image file")
     parser.add_argument('--out_file', type=str, default=None, 
                         help="Path to the output file")
+    parser.add_argument('--kfold', type=int, default=None,
+                        help='Specify this argument with the number of folds to do out-of-fold prediction')
     args = parser.parse_args()
 
     # Load configuration from file
@@ -212,6 +233,8 @@ def main():
         test_df = df.merge(test_df, how='left', on=configs[-1].img_cols[0]).fillna(0)
         test_df['fractured'] = test_df.apply(lambda row: row[row['prediction_type']], axis=1)
         test_df[['row_id', 'fractured']].to_csv(configs[-1].out_file, index=False)
+    elif args.kfold and 'fold' in config.label_file:
+        test_df = predict_oof(config, kfold=args.kfold)
     else:
         test_df = predict_all(config=config)
     print(test_df)
