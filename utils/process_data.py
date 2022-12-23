@@ -34,6 +34,8 @@ def parse_args():
                         help='Extract vertebrae bounding box annotation from segmentation')
     parser.add_argument('--get_frac_label', action='store_true',
                         help='Create fracture labels')
+    parser.add_argument('--vert_thresh', type=float, default=0.5, 
+                        help='Threshold used for determining whether an image contains a vertebrae')
     parser.add_argument('--seq_len', type=int, default=None, 
                         help='Length of the sequence of images to be sampled for each vertebrae')
     return parser.parse_args()
@@ -237,7 +239,7 @@ def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
         # Assign fracture label to each image
         vert_label_cols = [col + '_vert' for col in label_cols]
         frac_df = vert_df.set_index(img_cols[0]).join(df.set_index(img_cols[0]), lsuffix='_vert').reset_index()
-        frac_df[vert_label_cols] = (frac_df[vert_label_cols] > 0.5).astype('int')
+        frac_df[vert_label_cols] = (frac_df[vert_label_cols] > vert_thresh).astype('int')
         frac_df[label_cols] = frac_df[label_cols].values * frac_df[vert_label_cols].values
         return frac_df.loc[:, ~frac_df.columns.str.endswith('_vert')]
 
@@ -305,7 +307,8 @@ if __name__ == "__main__":
                   else pd.read_csv(args.vert_label_path)
         frac_df = create_fracture_labels(df, vert_df, img_cols=img_cols, label_cols=label_cols,
                                          crop_cols=['x0', 'y0', 'x1', 'y1'], extra_cols=[], 
-                                         vert_col='vertebrae', target_col='fractured', seq_len=args.seq_len)
+                                         vert_col='vertebrae', target_col='fractured', 
+                                         vert_thresh=args.vert_thresh, seq_len=args.seq_len)
         if not args.out_file: 
             if args.seq_len:
                 args.out_file = "vertebrae_df.pkl" 
