@@ -36,6 +36,7 @@ python utils/process_data.py \
     --vert_label_path "${OUTPUT_DIR}/infer_vert_bbox_ratio.pkl" \
     --out_dir $OUTPUT_DIR \
     --get_frac_label \
+    --vert_thresh 0.3 \
     --seq_len 24
 
 python fold_split.py \

@@ -228,8 +228,8 @@ def create_fracture_labels(df, vert_df, img_cols=['StudyInstanceUID', 'Slice'],
         # vert_df.rename(columns={f'{col}_slices': col for col in label_cols}, inplace=True)
         vert_df = vert_df[img_cols[:1] + crop_cols + label_cols].melt(id_vars=img_cols[:1] + crop_cols, 
                                                                       var_name=vert_col, value_name=img_cols[1])
-        # Select only rows with number of slices >= 5
-        vert_df = vert_df[vert_df[img_cols[1]].apply(len) >= 5]
+        # Select only rows with number of slices >= 1
+        vert_df = vert_df[vert_df[img_cols[1]].apply(len) >= 1]
 
         # Get new list of slices with evenly spaced index from the previous list
         vert_df[img_cols[1]] = vert_df[img_cols[1]].apply(lambda x: np.array(x)[np.linspace(0, len(x)-1, 

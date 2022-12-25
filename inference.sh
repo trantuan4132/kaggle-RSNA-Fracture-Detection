@@ -15,6 +15,7 @@ python3 utils/process_data.py \
     --out_dir $OUTPUT_DIR \
     --out_file "input_stage_2.pkl" \
     --get_frac_label \
+    --vert_thresh 0.3 \
     --seq_len 24
 
 python3 inference.py \
