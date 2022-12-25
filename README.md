@@ -254,7 +254,7 @@ sh train.sh
 
 </div>
 
-The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and fold 1, 2, 3 in stage 2 with the submission time of nearly 9 hours (could not ensemble more due to time limit). Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
+The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and all folds in stage 2 with the submission time of nearly 9 hours (could not ensemble more due to time limit). Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
 
 ## Demo
 
