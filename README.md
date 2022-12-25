@@ -189,15 +189,15 @@ The final prediction will be saved in the `infer_vert_bbox_ratio.pkl` file in th
 
 ### Data Preparation
 
-In this stage, the prediction generated on each slice in the `infer_vert_bbox_ratio.pkl` file will be further processed by determining only one bounding box for each study by getting the minimum of `x0`, `y0` and the maximum of `x1`, `y1` across all slices with the ratio of any vertebrae larger than a ratio threshold (i.e. 0.5) in each study. Moreover, for each vertebrae in a study, gather all slices in that study in which the ratio of that vertebrae is larger than the ratio threshold into a single list. After that, the processed prediction will have a unique study id in each row along with a bounding box's top left and bottom right coordination, and each vertebrae in each column with a list of slices belonging to it as value. 
+In this stage, the prediction generated on each slice in the `infer_vert_bbox_ratio.pkl` file will be further processed by determining only one bounding box for each study by getting the minimum of `x0`, `y0` and the maximum of `x1`, `y1` across all slices with the ratio of any vertebrae larger than a ratio threshold (i.e. 0.3) in each study. Moreover, for each vertebrae in a study, gather all slices in that study in which the ratio of that vertebrae is larger than the ratio threshold into a single list. After that, the processed prediction will have a unique study id in each row along with a bounding box's top left and bottom right coordination, and each vertebrae in each column with a list of slices belonging to it as value. 
 
-Finally, to generate the label file for this stage, each fracture label from `train.csv` will then be assigned to a list of slices belonging to each vertebrae in each study in the processed prediction and a fixed number of slices (i.e. 24) will be chosen from that list of slices using evenly spaced indices (e.g. 47 slices -> 24 slices with index 0, 2, 4, ..., 46). If a list of slices has less than a certain number of slices (i.e. 5), the row with that list of slices in the label file will be removed. The format of the label file will be as follow:
+Finally, to generate the label file for this stage, each fracture label from `train.csv` will then be assigned to a list of slices belonging to each vertebrae in each study in the processed prediction and a fixed number of slices (i.e. 24) will be chosen from that list of slices using evenly spaced indices (e.g. 47 slices -> 24 slices with index 0, 2, 4, ..., 46). If a list of slices has no slices, the row with that list of slices in the label file will be removed. The format of the label file will be as follow:
 
 ![](docs/stage2_input_format.png)
 
 The images used for training come from all of the 2019 studies except for a study with the id `1.2.826.0.1.3680043.20574` since this study does not contain any slices belonging to C1-C7. 
 
-To prepare the label file, run `python utils/preprocess_data.py --image_dir dataset/train_images --label_path dataset/train.csv --vert_label_path output/infer_vert_bbox_ratio.pkl --get_frac_label --seq_len 24` and the label file `vertebrae_df.pkl` will be generated in the `./output` directory
+To prepare the label file, run `python utils/preprocess_data.py --image_dir dataset/train_images --label_path dataset/train.csv --vert_label_path output/infer_vert_bbox_ratio.pkl --get_frac_label --vert_thresh 0.3 --seq_len 24` and the label file `vertebrae_df.pkl` will be generated in the `./output` directory
 
 
 ### Fold Splitting
@@ -250,7 +250,7 @@ sh train.sh
 
 |   CV   | Public LB | Private LB |
 |:------:|:---------:|:----------:|
-| 0.3668 |  0.3318   |   0.3691   |
+| 0.3349 |  0.3013   |   0.3367   |
 
 </div>
 
