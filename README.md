@@ -62,7 +62,7 @@ dataset
 
 ### Data Preparation
 
-In this step, images used for training will be those with segmentation mask available, which come from 87 patients out of 2019 total number of patients. The labels used in this step include top left coordination `(x0, y0)` and bottom right coordination `(x1, y1)` of the bounding box that cover all vertebrae C1-C7 in each image. The top left coordination `(x0, y0)` can be extracted from segmentation mask by determining the first column from top to bottom and the first row from left to right that contain the element belong to vertebrae C1-C7, while the bottom right coordination `(x1, y1)` can be determined in the similar way except for using the last column and row instead of the first one. The labels also include the ratio of each vertebrae in each image by counting the number of elements belong to each vertebrae in the segmentation mask, then divide by the maximum number of elements belong to each vertebrae in all images of each patient.
+In this step, the images used for training will be those with segmentation masks available, which come from 87 out of 2019 studies. The labels used in this step include top left coordination `(x0, y0)` and bottom right coordination `(x1, y1)` of the bounding box that cover all vertebrae C1-C7 in each image. The top left coordination `(x0, y0)` can be extracted from segmentation mask by determining the first column from top to bottom and the first row from left to right that contain the element belong to vertebrae C1-C7, while the bottom right coordination `(x1, y1)` can be determined in the similar way except for using the last column and row instead of the first one. The labels also include the ratio of each vertebrae in each image by counting the number of elements belong to each vertebrae in the segmentation mask, then divide by the maximum number of elements belong to each vertebrae in all images of each patient.
 
 In summary, each row in the label file contains:
 
@@ -189,7 +189,7 @@ The final prediction will be saved in the `infer_vert_bbox_ratio.pkl` file in th
 
 ### Data Preparation
 
-In this stage, the prediction generated on each slice in the `infer_vert_bbox_ratio.pkl` file will be further processed by determining only one bounding box for each study by getting the minimum of `x0`, `y0` and the maximum of `x1`, `y1` across all slices with the ratio of any vertebrae larger than a ratio threshold (i.e. 0.3) in each study. Moreover, for each vertebrae in a study, gather all slices in that study in which the ratio of that vertebrae is larger than the ratio threshold into a single list. After that, the processed prediction will have a unique study id in each row along with a bounding box's top left and bottom right coordination, and each vertebrae in each column with a list of slices belonging to it as value. 
+In this stage, the prediction generated on each slice in the `infer_vert_bbox_ratio.pkl` file will be further processed by determining only one bounding box for each study by getting the minimum of `x0`, `y0` and the maximum of `x1`, `y1` across all slices with the ratio of any vertebrae larger than a ratio threshold (i.e. 0.3) in each study. Moreover, for each vertebrae in a study, all slices in that study in which the ratio of that vertebrae is larger than the ratio threshold will be gathered into a single list. After that, the processed prediction will have a unique study id in each row along with a bounding box's top left and bottom right coordination, and each vertebrae in each column with a list of slices belonging to it as value. 
 
 Finally, to generate the label file for this stage, each fracture label from `train.csv` will then be assigned to a list of slices belonging to each vertebrae in each study in the processed prediction and a fixed number of slices (i.e. 24) will be chosen from that list of slices using evenly spaced indices (e.g. 47 slices -> 24 slices with index 0, 2, 4, ..., 46). If a list of slices has no slices, the row with that list of slices in the label file will be removed. The format of the label file will be as follow:
 
@@ -197,7 +197,7 @@ Finally, to generate the label file for this stage, each fracture label from `tr
 
 The images used for training come from all of the 2019 studies except for a study with the id `1.2.826.0.1.3680043.20574` since this study does not contain any slices belonging to C1-C7. 
 
-To prepare the label file, run `python utils/preprocess_data.py --image_dir dataset/train_images --label_path dataset/train.csv --vert_label_path output/infer_vert_bbox_ratio.pkl --get_frac_label --vert_thresh 0.3 --seq_len 24` and the label file `vertebrae_df.pkl` will be generated in the `./output` directory
+To prepare the label file, run `python utils/preprocess_data.py --label_path dataset/train.csv --vert_label_path output/infer_vert_bbox_ratio.pkl --get_frac_label --vert_thresh 0.3 --seq_len 24` and the label file `vertebrae_df.pkl` will be generated in the `./output` directory
 
 
 ### Fold Splitting
@@ -254,7 +254,9 @@ sh train.sh
 
 </div>
 
-The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and all folds in stage 2 with the submission time of nearly 9 hours (could not ensemble more due to time limit). Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
+The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and all folds in stage 2. Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
+
+In general, our approach achieves 0.3367 in the private leaderboard, which is between the score of the top 17 and 18 teams.
 
 ## Demo
 
