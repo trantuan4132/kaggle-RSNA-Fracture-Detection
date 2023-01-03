@@ -31,7 +31,6 @@ done
 python inference.py --CFG config/CFG_vert_bbox_ratio_infer.yaml
 
 python utils/process_data.py \
-    --image_dir "${INPUT_DIR}/train_images" \
     --label_path "${INPUT_DIR}/train.csv" \
     --vert_label_path "${OUTPUT_DIR}/infer_vert_bbox_ratio.pkl" \
     --out_dir $OUTPUT_DIR \
