@@ -250,13 +250,13 @@ sh train.sh
 
 |   CV   | Public LB | Private LB |
 |:------:|:---------:|:----------:|
-| 0.3349 |  0.3013   |   0.3367   |
+| 0.3349 |  0.2964   |   0.3302   |
 
 </div>
 
-The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of fold 1, 2, 3 stage 1 and all folds in stage 2. Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
+The CV is calculated using competition metric and out-of-fold prediction. The public LB and private LB is the score gotten from the kaggle competition using ensemble of all folds in stage 1 and all folds in stage 2. Both models use ConvNeXt-T as backbone, image size of 384 in stage 1 and 320 in stage 2.
 
-In general, our approach achieves 0.3367 in the private leaderboard, which is between the score of the top 17 and 18 teams.
+In general, our approach achieves 0.3302 in the private leaderboard, which is between the score of the top 15 and the top 16 teams.
 
 ## Demo
 
