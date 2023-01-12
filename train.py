@@ -156,8 +156,8 @@ def run(fold, config):
     if config.bbox_label: 
         kwargs['bbox_params'] = A.BboxParams(format='albumentations', label_fields=['class_labels'])
 
-    train_transform = build_transform(config.image_size, is_train=True, include_top=True, **kwargs)
-    val_transform = build_transform(config.image_size, is_train=False, include_top=True, **kwargs)
+    train_transform = build_transform(config.image_size, is_train=True, include_top=True, circular_crop=config.circular_crop, **kwargs)
+    val_transform = build_transform(config.image_size, is_train=False, include_top=True, circular_crop=config.circular_crop, **kwargs)
     
     train_dataset = RSNAClassificationDataset(image_dir=config.image_dir, df=train_df, 
                                               img_cols=config.img_cols, label_cols=config.label_cols,

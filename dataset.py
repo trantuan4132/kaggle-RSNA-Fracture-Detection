@@ -144,7 +144,7 @@ class RandomCircularCrop(ImageOnlyTransform):
                                   radius=image.shape[0]//2, color=(1,1,1), thickness=-1)
 
 
-def build_transform(image_size=None, is_train=True, include_top=True, **kwargs):
+def build_transform(image_size=None, is_train=True, include_top=True, circular_crop=False, **kwargs):
     """
     Builds a transformations pipeline for the data.
 
@@ -156,6 +156,8 @@ def build_transform(image_size=None, is_train=True, include_top=True, **kwargs):
         Whether the data is being used for training.
     include_top: bool, optional
         Whether to normalize and convert to tensor.
+    include_top: bool, optional
+        Whether to crop the image in a circle (the pixels outside the circle is blacked out)
     additional_targets: dict, optional
         A dictionary of additional targets to be applied same transformation as the image.
     """
@@ -181,8 +183,8 @@ def build_transform(image_size=None, is_train=True, include_top=True, **kwargs):
             A.Cutout(num_holes=4, max_h_size=int(image_size*0.2), 
                      max_w_size=int(image_size*0.2), fill_value=0, p=0.5),
         ])
-    # else:
-    #     transform.append(RandomCircularCrop(p=1.0))
+    if circular_crop:
+        transform.append(RandomCircularCrop(p=1.0))
     if include_top:
         transform.extend([
             A.Normalize(

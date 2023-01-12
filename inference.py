@@ -96,7 +96,7 @@ def predict_all(config, test_df=None):
     if config.bbox_label: 
         kwargs['bbox_params'] = A.BboxParams(format='albumentations', label_fields=['class_labels'])
 
-    test_trainsform = build_transform(config.image_size, is_train=False, include_top=True, **kwargs)
+    test_trainsform = build_transform(config.image_size, is_train=False, include_top=True, circular_crop=config.circular_crop, **kwargs)
     test_dataset = RSNAClassificationDataset(image_dir=config.image_dir, df=test_df,
                                              img_cols=config.img_cols, label_cols=config.label_cols,
                                              img_format=config.img_format, bbox_label=config.bbox_label, 

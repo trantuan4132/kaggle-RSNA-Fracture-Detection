@@ -8,6 +8,7 @@ img_format: 'dcm'
 bbox_label: True
 vert_ratio: True
 use_2dot5D: True
+circular_crop: True
 seq_len: null
 batch_size: 64
 image_size: 384

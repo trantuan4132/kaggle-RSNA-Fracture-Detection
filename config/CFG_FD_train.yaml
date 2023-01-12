@@ -8,6 +8,7 @@ image_dir: 'dataset/train_images'
 img_format: 'dcm'
 bbox_label: False
 use_2dot5D: True
+circular_crop: False
 seq_len: 24
 batch_size: 8
 image_size: 320
