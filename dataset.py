@@ -26,8 +26,18 @@ class RSNAClassificationDataset(Dataset):
             List of the names of the columns containing the labels
         img_format: str, default 'jpg'
             The image file format or extension
+        bbox_label: bool, default True
+            Whether the dataframe contains bounding box labels
         transform: albumentations transform, optional
             Albumentations transform to apply to the image
+        use_2dot5D: bool, default True
+            Whether to use 2.5D images by concatenating 3 consecutive images
+        overlap: bool, default True
+            Whether to allow overlapping image between multiple consecutive 2.5D images
+        seq_len: int, default None
+            The length of the sequence of images, return a sequence of images when specified, otherwise return a single image only
+        crop_cols: list, default []
+            List of the names of the columns containing the bounding box labels, used for cropping images
         """
         super(RSNAClassificationDataset, self).__init__()
         self.image_dir = image_dir
@@ -156,7 +166,7 @@ def build_transform(image_size=None, is_train=True, include_top=True, circular_c
         Whether the data is being used for training.
     include_top: bool, optional
         Whether to normalize and convert to tensor.
-    include_top: bool, optional
+    circular_crop: bool, optional
         Whether to crop the image in a circle (the pixels outside the circle is blacked out)
     additional_targets: dict, optional
         A dictionary of additional targets to be applied same transformation as the image.

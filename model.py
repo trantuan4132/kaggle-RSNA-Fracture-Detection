@@ -49,6 +49,8 @@ class RSNAClassifier(nn.Module):
             Number of output classes.
         drop_path_rate: float
             Drop path rate for the DropPath function.
+        use_seq_layer: bool, default False
+            Whether to use the sequence layer.
         """
         super(RSNAClassifier, self).__init__()
         self.model = timm.create_model(model_name, pretrained=pretrained,
